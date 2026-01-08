@@ -310,13 +310,6 @@ class _BubbleGameScreenState extends State<BubbleGameScreen> {
                   ),
                 ],
               ),
-              child: const Center(
-                child: Icon(
-                  Icons.arrow_upward,
-                  color: Colors.white,
-                  size: 36,
-                ),
-              ),
             ),
           ),
           // 새 게임
