@@ -25,6 +25,7 @@ class Maze {
   late Position startPos;
   late Position endPos;
   late Position playerPos;
+  final Set<Position> visitedPath = {};  // 지나온 경로 저장
 
   Maze({required this.rows, required this.cols}) {
     _generateMaze();
@@ -130,6 +131,7 @@ class Maze {
   bool movePlayer(Position direction) {
     final newPos = playerPos + direction;
     if (canMoveTo(newPos)) {
+      visitedPath.add(playerPos);  // 현재 위치를 지나온 경로에 추가
       playerPos = newPos;
       return true;
     }
@@ -147,9 +149,11 @@ class Maze {
 
   void reset() {
     playerPos = startPos;
+    visitedPath.clear();  // 경로 초기화
   }
 
   void regenerate() {
     _generateMaze();
+    visitedPath.clear();  // 경로 초기화
   }
 }

@@ -123,6 +123,8 @@ class MazePainter extends CustomPainter {
           cellWidth,
           cellHeight,
         );
+        final pos = Position(row, col);
+        final isVisited = maze.visitedPath.contains(pos);
 
         final paint = Paint();
 
@@ -133,9 +135,18 @@ class MazePainter extends CustomPainter {
             canvas.drawRect(rect, paint);
             break;
           case CellType.path:
-            // 길: 흰색 (이미 배경이 흰색이므로 생략 가능)
+            // 지나온 길 표시
+            if (isVisited) {
+              paint.color = const Color(0xFFE8D5F2);  // 연한 보라색
+              canvas.drawRect(rect, paint);
+            }
             break;
           case CellType.start:
+            // 지나온 길이면 배경 색칠
+            if (isVisited) {
+              paint.color = const Color(0xFFE8D5F2);
+              canvas.drawRect(rect, paint);
+            }
             // 시작점 마커
             final startPaint = Paint()..color = const Color(0xFF6B5B95);
             canvas.drawCircle(
@@ -155,7 +166,7 @@ class MazePainter extends CustomPainter {
             break;
           case CellType.player:
             // 플레이어
-            final playerPaint = Paint()..color = const Color(0xFF6B5B95);
+            final playerPaint = Paint()..color = const Color(0xFFE94560);  // 빨간색으로 구분
             canvas.drawCircle(
               Offset(col * cellWidth + cellWidth / 2, row * cellHeight + cellHeight / 2),
               cellWidth * 0.35,
