@@ -47,11 +47,11 @@ class _GameScreenState extends State<GameScreen> {
   (int, int) _getMazeSize() {
     switch (difficulty) {
       case Difficulty.easy:
-        return (11, 11);
-      case Difficulty.medium:
-        return (17, 17);
-      case Difficulty.hard:
         return (25, 25);
+      case Difficulty.medium:
+        return (35, 35);
+      case Difficulty.hard:
+        return (51, 51);
     }
   }
 
