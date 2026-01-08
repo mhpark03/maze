@@ -98,15 +98,17 @@ class MazePainter extends CustomPainter {
 
         switch (cellType) {
           case CellType.wall:
-            paint.color = const Color(0xFF1A1A2E);
+            // 벽: 진한 어두운 색
+            paint.color = const Color(0xFF0A0A12);
             canvas.drawRect(rect, paint);
             break;
           case CellType.path:
-            paint.color = const Color(0xFF16213E);
+            // 길: 밝은 색으로 명확하게 구분
+            paint.color = const Color(0xFF3A4A6B);
             canvas.drawRect(rect, paint);
             break;
           case CellType.start:
-            paint.color = const Color(0xFF16213E);
+            paint.color = const Color(0xFF3A4A6B);
             canvas.drawRect(rect, paint);
             // Draw start marker
             final startPaint = Paint()..color = const Color(0xFF00D9FF);
@@ -117,7 +119,7 @@ class MazePainter extends CustomPainter {
             );
             break;
           case CellType.end:
-            paint.color = const Color(0xFF16213E);
+            paint.color = const Color(0xFF3A4A6B);
             canvas.drawRect(rect, paint);
             // Draw end marker (star shape)
             final endPaint = Paint()..color = const Color(0xFFFFD700);
@@ -128,7 +130,7 @@ class MazePainter extends CustomPainter {
             );
             break;
           case CellType.player:
-            paint.color = const Color(0xFF16213E);
+            paint.color = const Color(0xFF3A4A6B);
             canvas.drawRect(rect, paint);
             // Draw player
             final playerPaint = Paint()..color = const Color(0xFFE94560);
