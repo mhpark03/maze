@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/maze.dart';
 import '../widgets/maze_widget.dart';
+import '../widgets/banner_ad_widget.dart';
 
 enum Difficulty { easy, medium, hard }
 
@@ -219,7 +220,8 @@ class _GameScreenState extends State<GameScreen> {
                   ),
                 ),
                 _buildControls(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
+                const BannerAdWidget(),
               ],
             ),
           ),

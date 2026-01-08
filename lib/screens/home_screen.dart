@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'game_screen.dart';
 import 'mole_game_screen.dart';
 import 'bubble_game_screen.dart';
+import '../widgets/banner_ad_widget.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -86,6 +87,8 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 8),
+              const BannerAdWidget(),
             ],
           ),
         ),

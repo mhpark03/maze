@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/mole_game.dart';
+import '../widgets/banner_ad_widget.dart';
 
 class MoleGameScreen extends StatefulWidget {
   const MoleGameScreen({super.key});
@@ -95,7 +96,8 @@ class _MoleGameScreenState extends State<MoleGameScreen> {
               ),
             ),
             _buildControls(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            const BannerAdWidget(),
           ],
         ),
       ),

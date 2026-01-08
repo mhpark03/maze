@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/bubble_game.dart';
+import '../widgets/banner_ad_widget.dart';
 
 class BubbleGameScreen extends StatefulWidget {
   const BubbleGameScreen({super.key});
@@ -119,7 +120,8 @@ class _BubbleGameScreenState extends State<BubbleGameScreen> {
               child: _buildGameArea(),
             ),
             _buildShooterArea(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            const BannerAdWidget(),
           ],
         ),
       ),
