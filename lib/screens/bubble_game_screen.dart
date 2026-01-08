@@ -402,49 +402,84 @@ class BubbleGamePainter extends CustomPainter {
 
     // 조준선
     if (!game.isShooting && game.currentBubble != null) {
-      final aimPaint = Paint()
-        ..color = Colors.white.withOpacity(0.3)
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke;
-
-      const dashLength = 10.0;
-      const gapLength = 10.0;
-      double x = game.shooterX;
-      double y = game.shooterY;
-      final vx = cos(game.aimAngle) * 8;
-      final vy = sin(game.aimAngle) * 8;
-
-      for (int i = 0; i < 20; i++) {
-        final startX = x;
-        final startY = y;
-        x += vx * dashLength / 8;
-        y += vy * dashLength / 8;
-
-        // 벽 반사
-        if (x < bubbleRadius) {
-          x = bubbleRadius;
-        }
-        if (x > size.width - bubbleRadius) {
-          x = size.width - bubbleRadius;
-        }
-
-        if (y < 0) break;
-
-        if (i % 2 == 0) {
-          canvas.drawLine(
-            Offset(startX, startY),
-            Offset(x, y),
-            aimPaint,
-          );
-        }
-
-        x += vx * gapLength / 8;
-        y += vy * gapLength / 8;
-      }
+      _drawAimLine(canvas, size, bubbleRadius);
     }
 
     // 발사대
     _drawShooter(canvas, size);
+  }
+
+  void _drawAimLine(Canvas canvas, Size size, double bubbleRadius) {
+    // 경로 포인트 계산
+    final points = <Offset>[];
+    double x = game.shooterX;
+    double y = game.shooterY;
+    double vx = cos(game.aimAngle);
+    double vy = sin(game.aimAngle);
+
+    points.add(Offset(x, y));
+
+    // 경로 추적 (벽 반사 포함)
+    for (int step = 0; step < 500; step++) {
+      x += vx * 2;
+      y += vy * 2;
+
+      // 좌우 벽 반사
+      if (x < bubbleRadius) {
+        x = bubbleRadius;
+        vx = -vx;
+        points.add(Offset(x, y));
+      } else if (x > size.width - bubbleRadius) {
+        x = size.width - bubbleRadius;
+        vx = -vx;
+        points.add(Offset(x, y));
+      }
+
+      // 상단 도달 시 종료
+      if (y < bubbleRadius) {
+        points.add(Offset(x, bubbleRadius));
+        break;
+      }
+    }
+
+    // 마지막 점 추가
+    if (points.last.dy > bubbleRadius) {
+      points.add(Offset(x, y));
+    }
+
+    // 점선 그리기
+    final dotPaint = Paint()
+      ..color = Colors.white.withOpacity(0.5)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    const dotSpacing = 15.0;
+
+    for (int i = 0; i < points.length - 1; i++) {
+      final start = points[i];
+      final end = points[i + 1];
+
+      final dx = end.dx - start.dx;
+      final dy = end.dy - start.dy;
+      final distance = sqrt(dx * dx + dy * dy);
+      final unitX = dx / distance;
+      final unitY = dy / distance;
+
+      double traveled = 0;
+      bool draw = true;
+
+      while (traveled < distance) {
+        if (draw) {
+          canvas.drawCircle(
+            Offset(start.dx + unitX * traveled, start.dy + unitY * traveled),
+            2.5,
+            dotPaint,
+          );
+        }
+        traveled += dotSpacing / 2;
+        draw = !draw;
+      }
+    }
   }
 
   void _drawBubble(Canvas canvas, double x, double y, double radius, Color color) {
