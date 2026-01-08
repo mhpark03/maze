@@ -348,16 +348,13 @@ class _GameScreenState extends State<GameScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
-          // 방향 버튼 한 줄 배치
+          // 방향 버튼 한 줄 배치 (화면 폭에 맞게 간격 분배)
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildControlButton(Icons.arrow_back, () => _movePlayer(const Position(0, -1))),
-              const SizedBox(width: 12),
               _buildControlButton(Icons.arrow_upward, () => _movePlayer(const Position(-1, 0))),
-              const SizedBox(width: 12),
               _buildControlButton(Icons.arrow_downward, () => _movePlayer(const Position(1, 0))),
-              const SizedBox(width: 12),
               _buildControlButton(Icons.arrow_forward, () => _movePlayer(const Position(0, 1))),
             ],
           ),
