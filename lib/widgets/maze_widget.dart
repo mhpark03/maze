@@ -13,14 +13,32 @@ class MazeWidget extends StatefulWidget {
 
 class _MazeWidgetState extends State<MazeWidget> {
   Offset? _dragStart;
-  static const double _dragThreshold = 20.0;
+  bool _isDraggingPlayer = false;
+  Size? _widgetSize;
+  static const double _dragThreshold = 15.0;
+
+  bool _isOnPlayer(Offset position) {
+    if (_widgetSize == null) return false;
+
+    final cellWidth = _widgetSize!.width / widget.maze.cols;
+    final cellHeight = _widgetSize!.height / widget.maze.rows;
+
+    final col = (position.dx / cellWidth).floor();
+    final row = (position.dy / cellHeight).floor();
+
+    final playerPos = widget.maze.playerPos;
+    return row == playerPos.row && col == playerPos.col;
+  }
 
   void _handlePanStart(DragStartDetails details) {
-    _dragStart = details.localPosition;
+    if (_isOnPlayer(details.localPosition)) {
+      _isDraggingPlayer = true;
+      _dragStart = details.localPosition;
+    }
   }
 
   void _handlePanUpdate(DragUpdateDetails details) {
-    if (_dragStart == null || widget.onMove == null) return;
+    if (!_isDraggingPlayer || _dragStart == null || widget.onMove == null) return;
 
     final delta = details.localPosition - _dragStart!;
 
@@ -46,29 +64,35 @@ class _MazeWidgetState extends State<MazeWidget> {
 
   void _handlePanEnd(DragEndDetails details) {
     _dragStart = null;
+    _isDraggingPlayer = false;
   }
 
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: widget.maze.cols / widget.maze.rows,
-      child: GestureDetector(
-        onPanStart: _handlePanStart,
-        onPanUpdate: _handlePanUpdate,
-        onPanEnd: _handlePanEnd,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFF6B5B95), width: 2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: CustomPaint(
-              painter: MazePainter(maze: widget.maze),
-              size: Size.infinite,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          _widgetSize = Size(constraints.maxWidth, constraints.maxHeight);
+          return GestureDetector(
+            onPanStart: _handlePanStart,
+            onPanUpdate: _handlePanUpdate,
+            onPanEnd: _handlePanEnd,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFF6B5B95), width: 2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: CustomPaint(
+                  painter: MazePainter(maze: widget.maze),
+                  size: Size.infinite,
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
