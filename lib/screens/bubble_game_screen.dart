@@ -410,6 +410,9 @@ class BubbleGamePainter extends CustomPainter {
   }
 
   void _drawAimLine(Canvas canvas, Size size, double bubbleRadius) {
+    final cellWidth = size.width / BubbleShooterGame.cols;
+    final cellHeight = BubbleShooterGame.bubbleRadius * 2 * 0.866;
+
     // 경로 포인트 계산
     final points = <Offset>[];
     double x = game.shooterX;
@@ -419,8 +422,9 @@ class BubbleGamePainter extends CustomPainter {
 
     points.add(Offset(x, y));
 
-    // 경로 추적 (벽 반사 포함)
-    for (int step = 0; step < 500; step++) {
+    // 경로 추적 (벽 반사 및 버블 충돌 포함)
+    bool hitBubble = false;
+    for (int step = 0; step < 500 && !hitBubble; step++) {
       x += vx * 2;
       y += vy * 2;
 
@@ -440,10 +444,32 @@ class BubbleGamePainter extends CustomPainter {
         points.add(Offset(x, bubbleRadius));
         break;
       }
+
+      // 버블과 충돌 체크
+      for (int row = 0; row < BubbleShooterGame.rows; row++) {
+        for (int col = 0; col < BubbleShooterGame.cols; col++) {
+          if (game.grid[row][col] == null) continue;
+
+          final offset = (row % 2 == 1) ? cellWidth / 2 : 0;
+          final bx = col * cellWidth + cellWidth / 2 + offset;
+          final by = row * cellHeight + bubbleRadius;
+
+          final dx = x - bx;
+          final dy = y - by;
+          final dist = sqrt(dx * dx + dy * dy);
+
+          if (dist < bubbleRadius * 1.9) {
+            points.add(Offset(x, y));
+            hitBubble = true;
+            break;
+          }
+        }
+        if (hitBubble) break;
+      }
     }
 
     // 마지막 점 추가
-    if (points.last.dy > bubbleRadius) {
+    if (!hitBubble && points.last.dy > bubbleRadius) {
       points.add(Offset(x, y));
     }
 
@@ -462,6 +488,8 @@ class BubbleGamePainter extends CustomPainter {
       final dx = end.dx - start.dx;
       final dy = end.dy - start.dy;
       final distance = sqrt(dx * dx + dy * dy);
+      if (distance < 1) continue;
+
       final unitX = dx / distance;
       final unitY = dy / distance;
 
