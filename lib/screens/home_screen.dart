@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'game_screen.dart';
 import 'mole_game_screen.dart';
+import 'bubble_game_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -31,9 +32,9 @@ class HomeScreen extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
               Expanded(
-                child: Column(
+                child: ListView(
                   children: [
                     _buildGameCard(
                       context,
@@ -62,6 +63,22 @@ class HomeScreen extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const MoleGameScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildGameCard(
+                      context,
+                      title: '버블 팝',
+                      description: '같은 색 버블을 터뜨려 점수를 얻으세요!',
+                      icon: Icons.bubble_chart,
+                      color: const Color(0xFF00D9FF),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const BubbleGameScreen(),
                           ),
                         );
                       },
