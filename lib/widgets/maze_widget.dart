@@ -1,25 +1,72 @@
 import 'package:flutter/material.dart';
 import '../models/maze.dart';
 
-class MazeWidget extends StatelessWidget {
+class MazeWidget extends StatefulWidget {
   final Maze maze;
+  final void Function(Position direction)? onMove;
 
-  const MazeWidget({super.key, required this.maze});
+  const MazeWidget({super.key, required this.maze, this.onMove});
+
+  @override
+  State<MazeWidget> createState() => _MazeWidgetState();
+}
+
+class _MazeWidgetState extends State<MazeWidget> {
+  Offset? _dragStart;
+  static const double _dragThreshold = 20.0;
+
+  void _handlePanStart(DragStartDetails details) {
+    _dragStart = details.localPosition;
+  }
+
+  void _handlePanUpdate(DragUpdateDetails details) {
+    if (_dragStart == null || widget.onMove == null) return;
+
+    final delta = details.localPosition - _dragStart!;
+
+    if (delta.distance < _dragThreshold) return;
+
+    // 드래그 방향 결정
+    Position? direction;
+    if (delta.dx.abs() > delta.dy.abs()) {
+      // 수평 이동
+      direction = delta.dx > 0
+          ? const Position(0, 1)  // 오른쪽
+          : const Position(0, -1); // 왼쪽
+    } else {
+      // 수직 이동
+      direction = delta.dy > 0
+          ? const Position(1, 0)  // 아래
+          : const Position(-1, 0); // 위
+    }
+
+    widget.onMove!(direction);
+    _dragStart = details.localPosition; // 연속 이동을 위해 시작점 갱신
+  }
+
+  void _handlePanEnd(DragEndDetails details) {
+    _dragStart = null;
+  }
 
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: maze.cols / maze.rows,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white, width: 2),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: CustomPaint(
-            painter: MazePainter(maze: maze),
-            size: Size.infinite,
+      aspectRatio: widget.maze.cols / widget.maze.rows,
+      child: GestureDetector(
+        onPanStart: _handlePanStart,
+        onPanUpdate: _handlePanUpdate,
+        onPanEnd: _handlePanEnd,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.white, width: 2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: CustomPaint(
+              painter: MazePainter(maze: widget.maze),
+              size: Size.infinite,
+            ),
           ),
         ),
       ),
