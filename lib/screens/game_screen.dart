@@ -234,23 +234,32 @@ class _GameScreenState extends State<GameScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              const Text(
-                '미로찾기',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
-              Text(
-                '골든 스타를 찾아가세요!',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
-                  fontSize: 14,
-                ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '미로찾기',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '골든 스타를 찾아가세요!',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
