@@ -211,7 +211,10 @@ class _GameScreenState extends State<GameScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Center(
-                      child: MazeWidget(maze: maze),
+                      child: MazeWidget(
+                        maze: maze,
+                        onMove: _movePlayer,
+                      ),
                     ),
                   ),
                 ),
@@ -345,39 +348,30 @@ class _GameScreenState extends State<GameScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildControlButton(
-                Icons.arrow_upward,
-                () => _movePlayer(const Position(-1, 0)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildControlButton(
-                Icons.arrow_back,
-                () => _movePlayer(const Position(0, -1)),
-              ),
-              const SizedBox(width: 60),
-              _buildControlButton(
-                Icons.arrow_forward,
-                () => _movePlayer(const Position(0, 1)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildControlButton(
-                Icons.arrow_downward,
-                () => _movePlayer(const Position(1, 0)),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A2E).withOpacity(0.5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.swipe,
+                  color: Colors.white.withOpacity(0.7),
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '미로 위에서 드래그하여 이동',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -389,29 +383,6 @@ class _GameScreenState extends State<GameScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildControlButton(IconData icon, VoidCallback onPressed) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A2E),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF16213E)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: const Color(0xFF00D9FF), size: 28),
       ),
     );
   }
