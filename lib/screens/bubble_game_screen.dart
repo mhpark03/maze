@@ -402,14 +402,15 @@ class BubbleGamePainter extends CustomPainter {
 
     // 조준선
     if (!game.isShooting && game.currentBubble != null) {
-      _drawAimLine(canvas, size, bubbleRadius);
+      final bubbleColor = getBubbleColor(game.currentBubble!.color);
+      _drawAimLine(canvas, size, bubbleRadius, bubbleColor);
     }
 
     // 발사대
     _drawShooter(canvas, size);
   }
 
-  void _drawAimLine(Canvas canvas, Size size, double bubbleRadius) {
+  void _drawAimLine(Canvas canvas, Size size, double bubbleRadius, Color color) {
     final cellWidth = size.width / BubbleShooterGame.cols;
     final cellHeight = BubbleShooterGame.bubbleRadius * 2 * 0.866;
 
@@ -473,13 +474,14 @@ class BubbleGamePainter extends CustomPainter {
       points.add(Offset(x, y));
     }
 
-    // 점선 그리기
+    // 점선 그리기 (현재 버블 색상으로)
     final dotPaint = Paint()
-      ..color = Colors.white.withOpacity(0.5)
-      ..strokeWidth = 3
+      ..color = color.withOpacity(0.8)
+      ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
 
-    const dotSpacing = 15.0;
+    const dotSpacing = 18.0;
+    const dotRadius = 5.0;
 
     for (int i = 0; i < points.length - 1; i++) {
       final start = points[i];
@@ -500,7 +502,7 @@ class BubbleGamePainter extends CustomPainter {
         if (draw) {
           canvas.drawCircle(
             Offset(start.dx + unitX * traveled, start.dy + unitY * traveled),
-            2.5,
+            dotRadius,
             dotPaint,
           );
         }
