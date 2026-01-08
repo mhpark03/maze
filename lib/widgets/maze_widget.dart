@@ -58,7 +58,7 @@ class _MazeWidgetState extends State<MazeWidget> {
         onPanEnd: _handlePanEnd,
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.white, width: 2),
+            border: Border.all(color: const Color(0xFF6B5B95), width: 2),
             borderRadius: BorderRadius.circular(8),
           ),
           child: ClipRRect(
@@ -84,6 +84,12 @@ class MazePainter extends CustomPainter {
     final cellWidth = size.width / maze.cols;
     final cellHeight = size.height / maze.rows;
 
+    // 배경을 흰색으로 채우기
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..color = Colors.white,
+    );
+
     for (int row = 0; row < maze.rows; row++) {
       for (int col = 0; col < maze.cols; col++) {
         final cellType = maze.getCell(row, col);
@@ -98,42 +104,34 @@ class MazePainter extends CustomPainter {
 
         switch (cellType) {
           case CellType.wall:
-            // 벽: 진한 어두운 색
-            paint.color = const Color(0xFF0A0A12);
+            // 벽: 보라색
+            paint.color = const Color(0xFF6B5B95);
             canvas.drawRect(rect, paint);
             break;
           case CellType.path:
-            // 길: 밝은 색으로 명확하게 구분
-            paint.color = const Color(0xFF3A4A6B);
-            canvas.drawRect(rect, paint);
+            // 길: 흰색 (이미 배경이 흰색이므로 생략 가능)
             break;
           case CellType.start:
-            paint.color = const Color(0xFF3A4A6B);
-            canvas.drawRect(rect, paint);
-            // Draw start marker
-            final startPaint = Paint()..color = const Color(0xFF00D9FF);
+            // 시작점 마커
+            final startPaint = Paint()..color = const Color(0xFF6B5B95);
             canvas.drawCircle(
               Offset(col * cellWidth + cellWidth / 2, row * cellHeight + cellHeight / 2),
-              cellWidth * 0.3,
+              cellWidth * 0.35,
               startPaint,
             );
             break;
           case CellType.end:
-            paint.color = const Color(0xFF3A4A6B);
-            canvas.drawRect(rect, paint);
-            // Draw end marker (star shape)
+            // 도착점 마커
             final endPaint = Paint()..color = const Color(0xFFFFD700);
             canvas.drawCircle(
               Offset(col * cellWidth + cellWidth / 2, row * cellHeight + cellHeight / 2),
-              cellWidth * 0.35,
+              cellWidth * 0.4,
               endPaint,
             );
             break;
           case CellType.player:
-            paint.color = const Color(0xFF3A4A6B);
-            canvas.drawRect(rect, paint);
-            // Draw player
-            final playerPaint = Paint()..color = const Color(0xFFE94560);
+            // 플레이어
+            final playerPaint = Paint()..color = const Color(0xFF6B5B95);
             canvas.drawCircle(
               Offset(col * cellWidth + cellWidth / 2, row * cellHeight + cellHeight / 2),
               cellWidth * 0.35,
@@ -142,26 +140,6 @@ class MazePainter extends CustomPainter {
             break;
         }
       }
-    }
-
-    // Draw grid lines
-    final gridPaint = Paint()
-      ..color = const Color(0xFF0F3460).withOpacity(0.3)
-      ..strokeWidth = 0.5;
-
-    for (int i = 0; i <= maze.rows; i++) {
-      canvas.drawLine(
-        Offset(0, i * cellHeight),
-        Offset(size.width, i * cellHeight),
-        gridPaint,
-      );
-    }
-    for (int i = 0; i <= maze.cols; i++) {
-      canvas.drawLine(
-        Offset(i * cellWidth, 0),
-        Offset(i * cellWidth, size.height),
-        gridPaint,
-      );
     }
   }
 
