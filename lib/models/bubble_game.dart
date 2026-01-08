@@ -1,33 +1,76 @@
 import 'dart:math';
 
-enum BubbleColor { red, blue, green, yellow, purple, empty }
+enum BubbleColor { red, blue, green, yellow, purple, orange, empty }
 
-class BubbleGame {
-  final int rows;
-  final int cols;
-  late List<List<BubbleColor>> grid;
+class Bubble {
+  BubbleColor color;
+  double x;
+  double y;
+  bool isMoving;
+  double vx;
+  double vy;
+
+  Bubble({
+    required this.color,
+    this.x = 0,
+    this.y = 0,
+    this.isMoving = false,
+    this.vx = 0,
+    this.vy = 0,
+  });
+}
+
+class BubbleShooterGame {
+  static const int rows = 12;
+  static const int cols = 8;
+  static const double bubbleRadius = 20.0;
+
+  late List<List<Bubble?>> grid;
   final Random _random = Random();
+
+  Bubble? currentBubble;
+  Bubble? nextBubble;
+  Bubble? shootingBubble;
+
+  double shooterX = 0;
+  double shooterY = 0;
+  double aimAngle = -pi / 2; // 위쪽 방향
 
   int score = 0;
   bool isGameOver = false;
+  bool isShooting = false;
+
+  List<Bubble> fallingBubbles = [];
+  List<Bubble> poppingBubbles = [];
 
   void Function()? onUpdate;
   void Function()? onGameOver;
 
-  BubbleGame({this.rows = 10, this.cols = 8}) {
-    _initGrid();
+  BubbleShooterGame() {
+    _initGame();
   }
 
-  void _initGrid() {
+  void _initGame() {
     score = 0;
     isGameOver = false;
-    grid = List.generate(
-      rows,
-      (row) => List.generate(
-        cols,
-        (_) => row < 6 ? _randomColor() : BubbleColor.empty,
-      ),
-    );
+    isShooting = false;
+    fallingBubbles.clear();
+    poppingBubbles.clear();
+
+    // 그리드 초기화
+    grid = List.generate(rows, (_) => List.filled(cols, null));
+
+    // 상단 5줄에 버블 배치
+    for (int row = 0; row < 5; row++) {
+      for (int col = 0; col < cols; col++) {
+        // 홀수 행은 오프셋
+        if (row % 2 == 1 && col == cols - 1) continue;
+        grid[row][col] = Bubble(color: _randomColor());
+      }
+    }
+
+    _prepareNextBubble();
+    _prepareNextBubble();
   }
 
   BubbleColor _randomColor() {
@@ -37,46 +80,182 @@ class BubbleGame {
       BubbleColor.green,
       BubbleColor.yellow,
       BubbleColor.purple,
+      BubbleColor.orange,
     ];
     return colors[_random.nextInt(colors.length)];
   }
 
-  void reset() {
-    _initGrid();
+  void _prepareNextBubble() {
+    currentBubble = nextBubble;
+    nextBubble = Bubble(color: _randomColor());
+  }
+
+  void setShooterPosition(double x, double y) {
+    shooterX = x;
+    shooterY = y;
+  }
+
+  void aim(double targetX, double targetY) {
+    if (isShooting) return;
+
+    final dx = targetX - shooterX;
+    final dy = targetY - shooterY;
+    aimAngle = atan2(dy, dx);
+
+    // 각도 제한 (위쪽 방향만)
+    if (aimAngle > -0.1) aimAngle = -0.1;
+    if (aimAngle < -pi + 0.1) aimAngle = -pi + 0.1;
+  }
+
+  void shoot() {
+    if (isShooting || currentBubble == null) return;
+
+    isShooting = true;
+    shootingBubble = Bubble(
+      color: currentBubble!.color,
+      x: shooterX,
+      y: shooterY,
+      isMoving: true,
+      vx: cos(aimAngle) * 15,
+      vy: sin(aimAngle) * 15,
+    );
+
+    _prepareNextBubble();
+  }
+
+  void update(double width, double height) {
+    if (shootingBubble != null && shootingBubble!.isMoving) {
+      // 버블 이동
+      shootingBubble!.x += shootingBubble!.vx;
+      shootingBubble!.y += shootingBubble!.vy;
+
+      // 좌우 벽 반사
+      if (shootingBubble!.x < bubbleRadius) {
+        shootingBubble!.x = bubbleRadius;
+        shootingBubble!.vx = -shootingBubble!.vx;
+      }
+      if (shootingBubble!.x > width - bubbleRadius) {
+        shootingBubble!.x = width - bubbleRadius;
+        shootingBubble!.vx = -shootingBubble!.vx;
+      }
+
+      // 상단 벽 또는 다른 버블과 충돌 체크
+      if (shootingBubble!.y < bubbleRadius) {
+        _snapBubbleToGrid(width);
+      } else if (_checkCollision(width)) {
+        _snapBubbleToGrid(width);
+      }
+    }
+
+    // 떨어지는 버블 업데이트
+    for (final bubble in fallingBubbles) {
+      bubble.vy += 0.5; // 중력
+      bubble.y += bubble.vy;
+    }
+    fallingBubbles.removeWhere((b) => b.y > height + 50);
+
+    // 터지는 버블 업데이트
+    poppingBubbles.removeWhere((b) {
+      b.x += (b.vx);
+      b.y += (b.vy);
+      b.vy += 0.3;
+      return b.y > height + 50;
+    });
+
     onUpdate?.call();
   }
 
-  bool pop(int row, int col) {
-    if (isGameOver) return false;
-    if (row < 0 || row >= rows || col < 0 || col >= cols) return false;
-    if (grid[row][col] == BubbleColor.empty) return false;
+  bool _checkCollision(double width) {
+    if (shootingBubble == null) return false;
 
-    final color = grid[row][col];
-    final connected = _findConnected(row, col, color);
+    final cellWidth = width / cols;
+    final cellHeight = bubbleRadius * 2 * 0.866; // 육각형 패킹
 
-    if (connected.length >= 2) {
-      // 연결된 버블 제거
-      for (final pos in connected) {
-        grid[pos.$1][pos.$2] = BubbleColor.empty;
+    for (int row = 0; row < rows; row++) {
+      for (int col = 0; col < cols; col++) {
+        if (grid[row][col] == null) continue;
+
+        final offset = (row % 2 == 1) ? cellWidth / 2 : 0;
+        final bx = col * cellWidth + cellWidth / 2 + offset;
+        final by = row * cellHeight + bubbleRadius;
+
+        final dx = shootingBubble!.x - bx;
+        final dy = shootingBubble!.y - by;
+        final dist = sqrt(dx * dx + dy * dy);
+
+        if (dist < bubbleRadius * 1.8) {
+          return true;
+        }
       }
+    }
+    return false;
+  }
 
-      // 점수 계산 (연결된 개수의 제곱)
-      score += connected.length * connected.length * 10;
+  void _snapBubbleToGrid(double width) {
+    if (shootingBubble == null) return;
 
-      // 버블 떨어뜨리기
-      _dropBubbles();
+    final cellWidth = width / cols;
+    final cellHeight = bubbleRadius * 2 * 0.866;
 
-      // 빈 열 정리
-      _compactColumns();
+    // 가장 가까운 빈 셀 찾기
+    int bestRow = 0;
+    int bestCol = 0;
+    double bestDist = double.infinity;
 
-      // 게임 오버 체크
-      _checkGameOver();
+    for (int row = 0; row < rows; row++) {
+      for (int col = 0; col < cols; col++) {
+        if (row % 2 == 1 && col == cols - 1) continue;
+        if (grid[row][col] != null) continue;
 
-      onUpdate?.call();
-      return true;
+        final offset = (row % 2 == 1) ? cellWidth / 2 : 0;
+        final bx = col * cellWidth + cellWidth / 2 + offset;
+        final by = row * cellHeight + bubbleRadius;
+
+        final dx = shootingBubble!.x - bx;
+        final dy = shootingBubble!.y - by;
+        final dist = sqrt(dx * dx + dy * dy);
+
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestRow = row;
+          bestCol = col;
+        }
+      }
     }
 
-    return false;
+    // 그리드에 버블 배치
+    grid[bestRow][bestCol] = Bubble(color: shootingBubble!.color);
+
+    // 같은 색 버블 체크 및 제거
+    final connected = _findConnected(bestRow, bestCol, shootingBubble!.color);
+    if (connected.length >= 3) {
+      // 버블 터뜨리기
+      for (final pos in connected) {
+        final row = pos.$1;
+        final col = pos.$2;
+        final offset = (row % 2 == 1) ? cellWidth / 2 : 0;
+
+        poppingBubbles.add(Bubble(
+          color: grid[row][col]!.color,
+          x: col * cellWidth + cellWidth / 2 + offset,
+          y: row * cellHeight + bubbleRadius,
+          vx: (_random.nextDouble() - 0.5) * 8,
+          vy: (_random.nextDouble() - 0.5) * 8,
+        ));
+
+        grid[row][col] = null;
+      }
+      score += connected.length * connected.length * 10;
+
+      // 연결되지 않은 버블 떨어뜨리기
+      _dropFloatingBubbles(cellWidth, cellHeight);
+    }
+
+    shootingBubble = null;
+    isShooting = false;
+
+    // 게임 오버 체크
+    _checkGameOver();
   }
 
   Set<(int, int)> _findConnected(int row, int col, BubbleColor color) {
@@ -90,78 +269,99 @@ class BubbleGame {
 
       if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
       if (connected.contains((r, c))) continue;
-      if (grid[r][c] != color) continue;
+      if (grid[r][c] == null || grid[r][c]!.color != color) continue;
 
       connected.add((r, c));
 
-      toCheck.add((r - 1, c)); // 위
-      toCheck.add((r + 1, c)); // 아래
-      toCheck.add((r, c - 1)); // 왼쪽
-      toCheck.add((r, c + 1)); // 오른쪽
+      // 육각형 이웃
+      final neighbors = _getNeighbors(r, c);
+      toCheck.addAll(neighbors);
     }
 
     return connected;
   }
 
-  void _dropBubbles() {
-    for (int col = 0; col < cols; col++) {
-      int writeRow = rows - 1;
-      for (int row = rows - 1; row >= 0; row--) {
-        if (grid[row][col] != BubbleColor.empty) {
-          if (row != writeRow) {
-            grid[writeRow][col] = grid[row][col];
-            grid[row][col] = BubbleColor.empty;
-          }
-          writeRow--;
-        }
-      }
+  List<(int, int)> _getNeighbors(int row, int col) {
+    final neighbors = <(int, int)>[];
+
+    // 상하좌우
+    neighbors.add((row - 1, col));
+    neighbors.add((row + 1, col));
+    neighbors.add((row, col - 1));
+    neighbors.add((row, col + 1));
+
+    // 대각선 (홀수/짝수 행에 따라 다름)
+    if (row % 2 == 0) {
+      neighbors.add((row - 1, col - 1));
+      neighbors.add((row + 1, col - 1));
+    } else {
+      neighbors.add((row - 1, col + 1));
+      neighbors.add((row + 1, col + 1));
     }
+
+    return neighbors;
   }
 
-  void _compactColumns() {
-    // 빈 열을 왼쪽으로 정리
-    int writeCol = 0;
-    for (int col = 0; col < cols; col++) {
-      bool hasContent = false;
-      for (int row = 0; row < rows; row++) {
-        if (grid[row][col] != BubbleColor.empty) {
-          hasContent = true;
-          break;
-        }
-      }
+  void _dropFloatingBubbles(double cellWidth, double cellHeight) {
+    // 상단에 연결된 버블 찾기
+    final attached = <(int, int)>{};
+    final toCheck = <(int, int)>[];
 
-      if (hasContent) {
-        if (col != writeCol) {
-          for (int row = 0; row < rows; row++) {
-            grid[row][writeCol] = grid[row][col];
-            grid[row][col] = BubbleColor.empty;
-          }
+    // 첫 번째 행의 모든 버블에서 시작
+    for (int col = 0; col < cols; col++) {
+      if (grid[0][col] != null) {
+        toCheck.add((0, col));
+      }
+    }
+
+    while (toCheck.isNotEmpty) {
+      final current = toCheck.removeLast();
+      final r = current.$1;
+      final c = current.$2;
+
+      if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
+      if (attached.contains((r, c))) continue;
+      if (grid[r][c] == null) continue;
+
+      attached.add((r, c));
+
+      final neighbors = _getNeighbors(r, c);
+      toCheck.addAll(neighbors);
+    }
+
+    // 연결되지 않은 버블 떨어뜨리기
+    for (int row = 0; row < rows; row++) {
+      for (int col = 0; col < cols; col++) {
+        if (grid[row][col] != null && !attached.contains((row, col))) {
+          final offset = (row % 2 == 1) ? cellWidth / 2 : 0;
+
+          fallingBubbles.add(Bubble(
+            color: grid[row][col]!.color,
+            x: col * cellWidth + cellWidth / 2 + offset,
+            y: row * cellHeight + bubbleRadius,
+            vy: 0,
+          ));
+
+          score += 20;
+          grid[row][col] = null;
         }
-        writeCol++;
       }
     }
   }
 
   void _checkGameOver() {
-    // 더 이상 터뜨릴 수 있는 버블이 없으면 게임 오버
-    for (int row = 0; row < rows; row++) {
-      for (int col = 0; col < cols; col++) {
-        if (grid[row][col] != BubbleColor.empty) {
-          final connected = _findConnected(row, col, grid[row][col]);
-          if (connected.length >= 2) {
-            return; // 아직 터뜨릴 수 있음
-          }
-        }
+    // 마지막 행에 버블이 있으면 게임 오버
+    for (int col = 0; col < cols; col++) {
+      if (grid[rows - 1][col] != null) {
+        isGameOver = true;
+        onGameOver?.call();
+        return;
       }
     }
-
-    isGameOver = true;
-    onGameOver?.call();
   }
 
-  int getConnectedCount(int row, int col) {
-    if (row < 0 || row >= rows || col < 0 || col >= cols) return 0;
-    if (grid[row][col] == BubbleColor.empty) return 0;
-    return _findConnected(row, col, grid[row][col]).length;
+  void reset() {
+    _initGame();
+    onUpdate?.call();
   }
 }
