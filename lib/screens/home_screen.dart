@@ -70,8 +70,8 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     _buildGameCard(
                       context,
-                      title: '버블 팝',
-                      description: '같은 색 버블을 터뜨려 점수를 얻으세요!',
+                      title: '버블 슈터',
+                      description: '버블을 발사해 같은 색 3개를 맞추세요!',
                       icon: Icons.bubble_chart,
                       color: const Color(0xFF00D9FF),
                       onTap: () {

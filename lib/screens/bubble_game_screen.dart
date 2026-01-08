@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/bubble_game.dart';
 
@@ -9,17 +11,30 @@ class BubbleGameScreen extends StatefulWidget {
 }
 
 class _BubbleGameScreenState extends State<BubbleGameScreen> {
-  late BubbleGame game;
+  late BubbleShooterGame game;
   int highScore = 0;
-  int? hoveredRow;
-  int? hoveredCol;
+  Timer? gameLoop;
+  Size? gameSize;
 
   @override
   void initState() {
     super.initState();
-    game = BubbleGame();
+    game = BubbleShooterGame();
     game.onUpdate = () => setState(() {});
     game.onGameOver = _showGameOverDialog;
+
+    // 게임 루프 시작
+    gameLoop = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      if (gameSize != null) {
+        game.update(gameSize!.width, gameSize!.height);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    gameLoop?.cancel();
+    super.dispose();
   }
 
   void _showGameOverDialog() {
@@ -82,6 +97,8 @@ class _BubbleGameScreenState extends State<BubbleGameScreen> {
         return Colors.amber;
       case BubbleColor.purple:
         return Colors.purple;
+      case BubbleColor.orange:
+        return Colors.orange;
       case BubbleColor.empty:
         return Colors.transparent;
     }
@@ -97,14 +114,11 @@ class _BubbleGameScreenState extends State<BubbleGameScreen> {
             _buildHeader(),
             const SizedBox(height: 8),
             _buildScoreBoard(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: _buildGameGrid(),
-              ),
+              child: _buildGameArea(),
             ),
-            _buildControls(),
+            _buildShooterArea(),
             const SizedBox(height: 16),
           ],
         ),
@@ -126,7 +140,7 @@ class _BubbleGameScreenState extends State<BubbleGameScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '버블 팝',
+                '버블 슈터',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 28,
@@ -134,7 +148,7 @@ class _BubbleGameScreenState extends State<BubbleGameScreen> {
                 ),
               ),
               Text(
-                '같은 색 버블을 터뜨리세요!',
+                '같은 색 버블 3개를 맞추세요!',
                 style: TextStyle(
                   color: Colors.white60,
                   fontSize: 14,
@@ -197,111 +211,307 @@ class _BubbleGameScreenState extends State<BubbleGameScreen> {
     );
   }
 
-  Widget _buildGameGrid() {
+  Widget _buildGameArea() {
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A2E),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF16213E), width: 2),
       ),
-      padding: const EdgeInsets.all(8),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final cellSize = constraints.maxWidth / game.cols;
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              for (int row = 0; row < game.rows; row++)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (int col = 0; col < game.cols; col++)
-                      _buildBubble(row, col, cellSize),
-                  ],
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            gameSize = Size(constraints.maxWidth, constraints.maxHeight);
+            game.setShooterPosition(
+              constraints.maxWidth / 2,
+              constraints.maxHeight - 40,
+            );
 
-  Widget _buildBubble(int row, int col, double size) {
-    final color = game.grid[row][col];
-    final isEmpty = color == BubbleColor.empty;
-    final connectedCount = isEmpty ? 0 : game.getConnectedCount(row, col);
-    final canPop = connectedCount >= 2;
-
-    return GestureDetector(
-      onTap: () {
-        if (!isEmpty && canPop) {
-          game.pop(row, col);
-        }
-      },
-      child: Container(
-        width: size,
-        height: size,
-        padding: const EdgeInsets.all(2),
-        child: isEmpty
-            ? null
-            : Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _getBubbleColor(color),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _getBubbleColor(color).withOpacity(0.5),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                  gradient: RadialGradient(
-                    center: const Alignment(-0.3, -0.3),
-                    colors: [
-                      _getBubbleColor(color).withOpacity(0.8),
-                      _getBubbleColor(color),
-                      _getBubbleColor(color).withOpacity(0.7),
-                    ],
-                  ),
+            return GestureDetector(
+              onPanUpdate: (details) {
+                game.aim(details.localPosition.dx, details.localPosition.dy);
+                setState(() {});
+              },
+              onTapUp: (details) {
+                game.aim(details.localPosition.dx, details.localPosition.dy);
+                game.shoot();
+              },
+              child: CustomPaint(
+                painter: BubbleGamePainter(
+                  game: game,
+                  getBubbleColor: _getBubbleColor,
                 ),
-                child: Center(
-                  child: Container(
-                    width: size * 0.3,
-                    height: size * 0.3,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.4),
-                    ),
-                  ),
-                ),
+                size: Size.infinite,
               ),
-      ),
-    );
-  }
-
-  Widget _buildControls() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GestureDetector(
-        onTap: () => game.reset(),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF00D9FF),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Text(
-            '새 게임',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
+
+  Widget _buildShooterArea() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          // 다음 버블
+          Column(
+            children: [
+              const Text(
+                'NEXT',
+                style: TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: game.nextBubble != null
+                      ? _getBubbleColor(game.nextBubble!.color)
+                      : Colors.grey,
+                  boxShadow: [
+                    BoxShadow(
+                      color: (game.nextBubble != null
+                              ? _getBubbleColor(game.nextBubble!.color)
+                              : Colors.grey)
+                          .withOpacity(0.5),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // 발사 버튼
+          GestureDetector(
+            onTap: () => game.shoot(),
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: game.currentBubble != null
+                    ? _getBubbleColor(game.currentBubble!.color)
+                    : Colors.grey,
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: (game.currentBubble != null
+                            ? _getBubbleColor(game.currentBubble!.color)
+                            : Colors.grey)
+                        .withOpacity(0.5),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.arrow_upward,
+                  color: Colors.white,
+                  size: 36,
+                ),
+              ),
+            ),
+          ),
+          // 새 게임
+          GestureDetector(
+            onTap: () => game.reset(),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF16213E),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.refresh,
+                color: Colors.white70,
+                size: 28,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class BubbleGamePainter extends CustomPainter {
+  final BubbleShooterGame game;
+  final Color Function(BubbleColor) getBubbleColor;
+
+  BubbleGamePainter({required this.game, required this.getBubbleColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cellWidth = size.width / BubbleShooterGame.cols;
+    final cellHeight = BubbleShooterGame.bubbleRadius * 2 * 0.866;
+    final bubbleRadius = BubbleShooterGame.bubbleRadius;
+
+    // 그리드 버블 그리기
+    for (int row = 0; row < BubbleShooterGame.rows; row++) {
+      for (int col = 0; col < BubbleShooterGame.cols; col++) {
+        final bubble = game.grid[row][col];
+        if (bubble == null) continue;
+
+        final offset = (row % 2 == 1) ? cellWidth / 2 : 0;
+        final x = col * cellWidth + cellWidth / 2 + offset;
+        final y = row * cellHeight + bubbleRadius;
+
+        _drawBubble(canvas, x, y, bubbleRadius, getBubbleColor(bubble.color));
+      }
+    }
+
+    // 발사 중인 버블
+    if (game.shootingBubble != null) {
+      _drawBubble(
+        canvas,
+        game.shootingBubble!.x,
+        game.shootingBubble!.y,
+        bubbleRadius,
+        getBubbleColor(game.shootingBubble!.color),
+      );
+    }
+
+    // 떨어지는 버블
+    for (final bubble in game.fallingBubbles) {
+      _drawBubble(
+        canvas,
+        bubble.x,
+        bubble.y,
+        bubbleRadius * 0.9,
+        getBubbleColor(bubble.color).withOpacity(0.8),
+      );
+    }
+
+    // 터지는 버블
+    for (final bubble in game.poppingBubbles) {
+      _drawBubble(
+        canvas,
+        bubble.x,
+        bubble.y,
+        bubbleRadius * 0.7,
+        getBubbleColor(bubble.color).withOpacity(0.6),
+      );
+    }
+
+    // 조준선
+    if (!game.isShooting && game.currentBubble != null) {
+      final aimPaint = Paint()
+        ..color = Colors.white.withOpacity(0.3)
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke;
+
+      const dashLength = 10.0;
+      const gapLength = 10.0;
+      double x = game.shooterX;
+      double y = game.shooterY;
+      final vx = cos(game.aimAngle) * 8;
+      final vy = sin(game.aimAngle) * 8;
+
+      for (int i = 0; i < 20; i++) {
+        final startX = x;
+        final startY = y;
+        x += vx * dashLength / 8;
+        y += vy * dashLength / 8;
+
+        // 벽 반사
+        if (x < bubbleRadius) {
+          x = bubbleRadius;
+        }
+        if (x > size.width - bubbleRadius) {
+          x = size.width - bubbleRadius;
+        }
+
+        if (y < 0) break;
+
+        if (i % 2 == 0) {
+          canvas.drawLine(
+            Offset(startX, startY),
+            Offset(x, y),
+            aimPaint,
+          );
+        }
+
+        x += vx * gapLength / 8;
+        y += vy * gapLength / 8;
+      }
+    }
+
+    // 발사대
+    _drawShooter(canvas, size);
+  }
+
+  void _drawBubble(Canvas canvas, double x, double y, double radius, Color color) {
+    // 그림자
+    canvas.drawCircle(
+      Offset(x, y + 2),
+      radius,
+      Paint()..color = Colors.black.withOpacity(0.3),
+    );
+
+    // 메인 버블
+    final gradient = RadialGradient(
+      center: const Alignment(-0.3, -0.3),
+      colors: [
+        Color.lerp(color, Colors.white, 0.3)!,
+        color,
+        Color.lerp(color, Colors.black, 0.2)!,
+      ],
+    );
+
+    canvas.drawCircle(
+      Offset(x, y),
+      radius,
+      Paint()..shader = gradient.createShader(
+        Rect.fromCircle(center: Offset(x, y), radius: radius),
+      ),
+    );
+
+    // 하이라이트
+    canvas.drawCircle(
+      Offset(x - radius * 0.3, y - radius * 0.3),
+      radius * 0.25,
+      Paint()..color = Colors.white.withOpacity(0.6),
+    );
+  }
+
+  void _drawShooter(Canvas canvas, Size size) {
+    final shooterX = game.shooterX;
+    final shooterY = game.shooterY;
+
+    // 발사대 베이스
+    final basePaint = Paint()
+      ..color = const Color(0xFF4A4A6A)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(
+      Offset(shooterX, shooterY + 10),
+      30,
+      basePaint,
+    );
+
+    // 발사대 포신
+    final barrelPaint = Paint()
+      ..color = const Color(0xFF6A6A8A)
+      ..strokeWidth = 12
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(shooterX, shooterY),
+      Offset(
+        shooterX + cos(game.aimAngle) * 40,
+        shooterY + sin(game.aimAngle) * 40,
+      ),
+      barrelPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant BubbleGamePainter oldDelegate) => true;
 }
