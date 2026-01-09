@@ -197,7 +197,7 @@ class BubbleShooterGame {
     final cellWidth = width / cols;
     final cellHeight = bubbleRadius * 2 * 0.866;
 
-    // 가장 가까운 빈 셀 찾기
+    // 가장 가까운 빈 셀 찾기 (기존 버블과 인접한 셀만)
     int bestRow = 0;
     int bestCol = 0;
     double bestDist = double.infinity;
@@ -206,6 +206,9 @@ class BubbleShooterGame {
       for (int col = 0; col < cols; col++) {
         if (row % 2 == 1 && col == cols - 1) continue;
         if (grid[row][col] != null) continue;
+
+        // 첫 번째 행이 아니면, 인접한 버블이 있어야 함
+        if (row > 0 && !_hasAdjacentBubble(row, col)) continue;
 
         final offset = (row % 2 == 1) ? cellWidth / 2 : 0;
         final bx = col * cellWidth + cellWidth / 2 + offset;
@@ -295,6 +298,17 @@ class BubbleShooterGame {
     neighbors.add((row + 1, col + 1)); // 우하
 
     return neighbors;
+  }
+
+  bool _hasAdjacentBubble(int row, int col) {
+    final neighbors = _getNeighbors(row, col);
+    for (final neighbor in neighbors) {
+      final r = neighbor.$1;
+      final c = neighbor.$2;
+      if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
+      if (grid[r][c] != null) return true;
+    }
+    return false;
   }
 
   void _dropFloatingBubbles(double cellWidth, double cellHeight) {
