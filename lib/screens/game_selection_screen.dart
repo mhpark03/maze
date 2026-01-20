@@ -9,6 +9,8 @@ import 'game_screen.dart';
 import '../maze/maze_screen.dart';
 import '../parking_jam/parking_screen.dart';
 import '../parking_jam/models/parking_models.dart';
+import '../car_escape/car_escape_screen.dart';
+import '../car_escape/models/car_escape_models.dart';
 
 class GameSelectionScreen extends StatefulWidget {
   const GameSelectionScreen({super.key});
@@ -85,6 +87,14 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                       icon: Icons.local_parking,
                       color: Colors.orange,
                       onTap: () => _showParkingJamDifficultyDialog(context, l10n),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildGameCard(
+                      context: context,
+                      title: l10n.carEscape,
+                      icon: Icons.directions_car,
+                      color: Colors.green,
+                      onTap: () => _showCarEscapeDifficultyDialog(context, l10n),
                     ),
                   ],
                 ),
@@ -307,6 +317,62 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => ParkingScreen(difficulty: difficulty),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCarEscapeDifficultyDialog(BuildContext context, AppLocalizations l10n) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2D2D44),
+        title: Text(l10n.selectDifficulty, style: const TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildCarEscapeDifficultyOption(
+              context: context,
+              title: '${l10n.easy} (6x6, 4 ${l10n.carEscapeIntersections})',
+              difficulty: CarEscapeDifficulty.easy,
+            ),
+            _buildCarEscapeDifficultyOption(
+              context: context,
+              title: '${l10n.normal} (7x7, 6 ${l10n.carEscapeIntersections})',
+              difficulty: CarEscapeDifficulty.medium,
+            ),
+            _buildCarEscapeDifficultyOption(
+              context: context,
+              title: '${l10n.hard} (8x8, 8 ${l10n.carEscapeIntersections})',
+              difficulty: CarEscapeDifficulty.hard,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.close, style: const TextStyle(color: Colors.green)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCarEscapeDifficultyOption({
+    required BuildContext context,
+    required String title,
+    required CarEscapeDifficulty difficulty,
+  }) {
+    return ListTile(
+      title: Text(title, style: const TextStyle(color: Colors.white70)),
+      leading: const Icon(Icons.directions_car, color: Colors.green),
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CarEscapeScreen(difficulty: difficulty),
           ),
         );
       },

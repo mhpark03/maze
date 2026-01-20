@@ -85,6 +85,26 @@ class AppLocalizations {
       'parkingRulesControlsDesc': 'Tap a car to make it exit. Each car moves in the direction of its arrow.',
       'parkingRulesTips': 'Tips',
       'parkingRulesTipsDesc': 'A car can only exit if there are no other cars blocking its path. Find the right order to clear all cars!',
+      // Car Escape strings
+      'carEscape': 'Traffic Turn',
+      'carEscapeCongratulations': 'Congratulations!',
+      'carEscapeCleared': 'All cars have passed!',
+      'carEscapeMoves': 'Cars: {count}',
+      'carEscapeMovesLabel': 'Cars',
+      'carEscapeInstruction': 'Tap a car to make it go through the intersection in its indicated direction',
+      'carEscapeRulesTitle': 'How to Play',
+      'carEscapeRulesObjective': 'Objective',
+      'carEscapeRulesObjectiveDesc': 'Help all cars pass through the intersection safely without colliding.',
+      'carEscapeRulesControls': 'Controls',
+      'carEscapeRulesControlsDesc': 'Tap a car to make it go. Each car will turn in the direction shown by its arrow.',
+      'carEscapeRulesTips': 'Tips',
+      'carEscapeRulesTipsDesc': 'Cars cannot go if their path conflicts with another car at the front of its lane. Find the right order!',
+      'carEscapeTurnTypes': 'Turn Types',
+      'carEscapeStraight': 'Straight',
+      'carEscapeLeft': 'Left',
+      'carEscapeRight': 'Right',
+      'carEscapeUturn': 'U-Turn',
+      'carEscapeIntersections': 'intersections',
     },
     'ko': {
       // Arrow Maze strings
@@ -158,6 +178,26 @@ class AppLocalizations {
       'parkingRulesControlsDesc': '차량을 탭하면 출발합니다. 각 차량은 화살표 방향으로 이동합니다.',
       'parkingRulesTips': '팁',
       'parkingRulesTipsDesc': '차량은 앞에 다른 차가 없어야만 출발할 수 있습니다. 올바른 순서를 찾아 모든 차량을 빼내세요!',
+      // Car Escape strings
+      'carEscape': '교차로 탈출',
+      'carEscapeCongratulations': '축하합니다!',
+      'carEscapeCleared': '모든 차량이 통과했습니다!',
+      'carEscapeMoves': '차량: {count}대',
+      'carEscapeMovesLabel': '차량',
+      'carEscapeInstruction': '차량을 탭하면 표시된 방향으로 교차로를 통과합니다',
+      'carEscapeRulesTitle': '게임 방법',
+      'carEscapeRulesObjective': '목표',
+      'carEscapeRulesObjectiveDesc': '모든 차량이 충돌 없이 교차로를 안전하게 통과하도록 도와주세요.',
+      'carEscapeRulesControls': '조작 방법',
+      'carEscapeRulesControlsDesc': '차량을 탭하면 출발합니다. 각 차량은 화살표 방향으로 회전합니다.',
+      'carEscapeRulesTips': '팁',
+      'carEscapeRulesTipsDesc': '경로가 다른 차량과 겹치면 출발할 수 없습니다. 올바른 순서를 찾으세요!',
+      'carEscapeTurnTypes': '회전 종류',
+      'carEscapeStraight': '직진',
+      'carEscapeLeft': '좌회전',
+      'carEscapeRight': '우회전',
+      'carEscapeUturn': '유턴',
+      'carEscapeIntersections': '교차로',
     },
     'ja': {
       // Arrow Maze strings
@@ -231,6 +271,26 @@ class AppLocalizations {
       'parkingRulesControlsDesc': '車をタップすると出発します。各車は矢印の方向に移動します。',
       'parkingRulesTips': 'ヒント',
       'parkingRulesTipsDesc': '車は前に他の車がない場合のみ出発できます。正しい順序を見つけてすべての車を出してください！',
+      // Car Escape strings
+      'carEscape': '交差点脱出',
+      'carEscapeCongratulations': 'おめでとうございます！',
+      'carEscapeCleared': 'すべての車が通過しました！',
+      'carEscapeMoves': '車: {count}台',
+      'carEscapeMovesLabel': '車',
+      'carEscapeInstruction': '車をタップすると表示された方向に交差点を通過します',
+      'carEscapeRulesTitle': '遊び方',
+      'carEscapeRulesObjective': '目標',
+      'carEscapeRulesObjectiveDesc': 'すべての車が衝突せずに交差点を安全に通過できるようにしてください。',
+      'carEscapeRulesControls': '操作方法',
+      'carEscapeRulesControlsDesc': '車をタップすると出発します。各車は矢印の方向に曲がります。',
+      'carEscapeRulesTips': 'ヒント',
+      'carEscapeRulesTipsDesc': '経路が他の車と重なる場合は出発できません。正しい順序を見つけてください！',
+      'carEscapeTurnTypes': '回転の種類',
+      'carEscapeStraight': '直進',
+      'carEscapeLeft': '左折',
+      'carEscapeRight': '右折',
+      'carEscapeUturn': 'Uターン',
+      'carEscapeIntersections': '交差点',
     },
     'zh': {
       // Arrow Maze strings
@@ -304,6 +364,26 @@ class AppLocalizations {
       'parkingRulesControlsDesc': '点击车辆即可出发。每辆车都会朝箭头方向移动。',
       'parkingRulesTips': '提示',
       'parkingRulesTipsDesc': '只有前方没有其他车辆时，车辆才能出发。找到正确的顺序，移出所有车辆！',
+      // Car Escape strings
+      'carEscape': '交叉路口',
+      'carEscapeCongratulations': '恭喜！',
+      'carEscapeCleared': '所有车辆都通过了！',
+      'carEscapeMoves': '车辆: {count}',
+      'carEscapeMovesLabel': '车辆',
+      'carEscapeInstruction': '点击车辆，它会按指示方向通过路口',
+      'carEscapeRulesTitle': '游戏方法',
+      'carEscapeRulesObjective': '目标',
+      'carEscapeRulesObjectiveDesc': '帮助所有车辆安全通过路口，不发生碰撞。',
+      'carEscapeRulesControls': '操作方法',
+      'carEscapeRulesControlsDesc': '点击车辆出发。每辆车都会按箭头方向转弯。',
+      'carEscapeRulesTips': '提示',
+      'carEscapeRulesTipsDesc': '如果路径与其他车辆冲突，则无法出发。找到正确的顺序！',
+      'carEscapeTurnTypes': '转向类型',
+      'carEscapeStraight': '直行',
+      'carEscapeLeft': '左转',
+      'carEscapeRight': '右转',
+      'carEscapeUturn': '掉头',
+      'carEscapeIntersections': '交叉路口',
     },
   };
 
@@ -377,6 +457,30 @@ class AppLocalizations {
 
   String parkingCars(int count) =>
       _localizedValues[locale.languageCode]!['parkingCars']!.replaceAll('{count}', count.toString());
+
+  // Car Escape getters
+  String get carEscape => _localizedValues[locale.languageCode]!['carEscape']!;
+  String get carEscapeCongratulations => _localizedValues[locale.languageCode]!['carEscapeCongratulations']!;
+  String get carEscapeCleared => _localizedValues[locale.languageCode]!['carEscapeCleared']!;
+  String get carEscapeMovesLabel => _localizedValues[locale.languageCode]!['carEscapeMovesLabel']!;
+  String get carEscapeInstruction => _localizedValues[locale.languageCode]!['carEscapeInstruction']!;
+  String get carEscapeRulesTitle => _localizedValues[locale.languageCode]!['carEscapeRulesTitle']!;
+  String get carEscapeRulesObjective => _localizedValues[locale.languageCode]!['carEscapeRulesObjective']!;
+  String get carEscapeRulesObjectiveDesc => _localizedValues[locale.languageCode]!['carEscapeRulesObjectiveDesc']!;
+  String get carEscapeRulesControls => _localizedValues[locale.languageCode]!['carEscapeRulesControls']!;
+  String get carEscapeRulesControlsDesc => _localizedValues[locale.languageCode]!['carEscapeRulesControlsDesc']!;
+  String get carEscapeRulesTips => _localizedValues[locale.languageCode]!['carEscapeRulesTips']!;
+  String get carEscapeRulesTipsDesc => _localizedValues[locale.languageCode]!['carEscapeRulesTipsDesc']!;
+
+  String carEscapeMoves(int count) =>
+      _localizedValues[locale.languageCode]!['carEscapeMoves']!.replaceAll('{count}', count.toString());
+
+  String get carEscapeTurnTypes => _localizedValues[locale.languageCode]!['carEscapeTurnTypes']!;
+  String get carEscapeStraight => _localizedValues[locale.languageCode]!['carEscapeStraight']!;
+  String get carEscapeLeft => _localizedValues[locale.languageCode]!['carEscapeLeft']!;
+  String get carEscapeRight => _localizedValues[locale.languageCode]!['carEscapeRight']!;
+  String get carEscapeUturn => _localizedValues[locale.languageCode]!['carEscapeUturn']!;
+  String get carEscapeIntersections => _localizedValues[locale.languageCode]!['carEscapeIntersections']!;
 
   // Methods with parameters
   String tapArrow(int count) =>
