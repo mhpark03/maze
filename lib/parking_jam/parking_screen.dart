@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
+import '../services/ad_service.dart';
 import 'models/parking_models.dart';
 import 'parking_generator.dart';
 import 'widgets/parking_board.dart';
@@ -19,13 +20,17 @@ class _ParkingScreenState extends State<ParkingScreen> {
   bool _isLoading = true;
   int _totalCars = 0;
   int _clearedCars = 0;
+  int _hintCount = 0;
+  int? _hintCarId;
   final Stopwatch _stopwatch = Stopwatch();
   Timer? _timer;
   String _elapsedTime = '00:00';
+  final AdService _adService = AdService();
 
   @override
   void initState() {
     super.initState();
+    _adService.loadRewardedAd();
     _generatePuzzle();
   }
 
@@ -33,6 +38,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
   void dispose() {
     _timer?.cancel();
     _stopwatch.stop();
+    _adService.disposeRewardedAd();
     super.dispose();
   }
 
@@ -47,6 +53,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
       _puzzle = puzzle;
       _totalCars = puzzle.cars.length;
       _clearedCars = 0;
+      _hintCount = 0;
+      _hintCarId = null;
       _isLoading = false;
     });
 
@@ -80,12 +88,87 @@ class _ParkingScreenState extends State<ParkingScreen> {
     setState(() {
       _puzzle!.removeCar(car.id);
       _clearedCars++;
+      _hintCarId = null;
     });
 
     if (_puzzle!.isComplete) {
       _stopwatch.stop();
       _timer?.cancel();
       _showWinDialog();
+    }
+  }
+
+  void _showHintWithAd(AppLocalizations l10n) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2D2D44),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          l10n.hintConfirmTitle,
+          style: const TextStyle(color: Colors.orange),
+        ),
+        content: Text(
+          l10n.hintConfirmMessage,
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              l10n.cancel,
+              style: const TextStyle(color: Colors.white54),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _adService.showRewardedAd(
+                onUserEarnedReward: () {
+                  _showHint();
+                },
+                onAdFailedToShow: () {
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: Text(l10n.adNotReady),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: const Color(0xFF2D2D44),
+                    ),
+                  );
+                  _showHint();
+                },
+              );
+            },
+            child: Text(
+              l10n.watch,
+              style: const TextStyle(color: Colors.orange),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHint() {
+    if (_puzzle == null || _puzzle!.cars.isEmpty) return;
+
+    for (var car in _puzzle!.cars) {
+      if (_puzzle!.canCarExit(car)) {
+        setState(() {
+          _hintCarId = car.id;
+          _hintCount++;
+        });
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted && _hintCarId == car.id) {
+            setState(() {
+              _hintCarId = null;
+            });
+          }
+        });
+        return;
+      }
     }
   }
 
@@ -116,6 +199,11 @@ class _ParkingScreenState extends State<ParkingScreen> {
             const SizedBox(height: 8),
             Text(
               '${l10n.time}: $_elapsedTime',
+              style: const TextStyle(color: Colors.white70, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${l10n.hint}: $_hintCount',
               style: const TextStyle(color: Colors.white70, fontSize: 18),
             ),
           ],
@@ -218,6 +306,11 @@ class _ParkingScreenState extends State<ParkingScreen> {
             onPressed: _showRulesDialog,
           ),
           IconButton(
+            icon: const Icon(Icons.lightbulb_outline, color: Colors.white70),
+            onPressed: () => _showHintWithAd(l10n),
+            tooltip: l10n.hint,
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white70),
             onPressed: _generatePuzzle,
           ),
@@ -264,6 +357,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
                             puzzle: _puzzle!,
                             onCarTap: _onCarTap,
                             onCarExited: _onCarExited,
+                            hintCarId: _hintCarId,
                           )
                         : const SizedBox(),
                   ),

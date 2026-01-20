@@ -6,12 +6,14 @@ class ParkingBoard extends StatefulWidget {
   final ParkingPuzzle puzzle;
   final Function(Car) onCarTap;
   final Function(Car) onCarExited;
+  final int? hintCarId;
 
   const ParkingBoard({
     super.key,
     required this.puzzle,
     required this.onCarTap,
     required this.onCarExited,
+    this.hintCarId,
   });
 
   @override
@@ -207,6 +209,7 @@ class _ParkingBoardState extends State<ParkingBoard>
     final exitAnim = _exitAnimations[car.id];
     final shakeAnim = _shakeAnimations[car.id];
     final isHighlighted = _highlightedBlockingCarId == car.id;
+    final isHintCar = widget.hintCarId == car.id;
 
     // 원본 이미지는 위(up)를 바라봄
     // quarterTurns: 시계방향 90도 회전 횟수
@@ -253,6 +256,20 @@ class _ParkingBoardState extends State<ParkingBoard>
                       color: Colors.white.withValues(alpha: 0.5),
                       blurRadius: 8,
                       spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+            if (isHintCar)
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.yellow, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.yellow.withValues(alpha: 0.6),
+                      blurRadius: 12,
+                      spreadRadius: 4,
                     ),
                   ],
                 ),
