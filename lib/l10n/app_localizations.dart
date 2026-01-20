@@ -72,7 +72,7 @@ class AppLocalizations {
       'watch': 'Watch',
       'cancel': 'Cancel',
       // Parking Jam strings
-      'parkingJam': 'Parking Jam',
+      'parkingJam': 'Parking Escape',
       'parkingCongratulations': 'Congratulations!',
       'parkingCleared': 'All cars have exited!',
       'parkingCars': 'Cars: {count}',
