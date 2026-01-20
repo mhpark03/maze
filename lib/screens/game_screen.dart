@@ -38,20 +38,55 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _showHintWithAd(GameState gameState, AppLocalizations l10n) {
-    _adService.showRewardedAd(
-      onUserEarnedReward: () {
-        gameState.showHint();
-      },
-      onAdFailedToShow: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.adNotReady),
-            duration: const Duration(seconds: 2),
-            backgroundColor: const Color(0xFF2D2D44),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2D2D44),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          l10n.hintConfirmTitle,
+          style: const TextStyle(color: Color(0xFF4ECDC4)),
+        ),
+        content: Text(
+          l10n.hintConfirmMessage,
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              l10n.cancel,
+              style: const TextStyle(color: Colors.white54),
+            ),
           ),
-        );
-        gameState.showHint();
-      },
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _adService.showRewardedAd(
+                onUserEarnedReward: () {
+                  gameState.showHint();
+                },
+                onAdFailedToShow: () {
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: Text(l10n.adNotReady),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: const Color(0xFF2D2D44),
+                    ),
+                  );
+                  gameState.showHint();
+                },
+              );
+            },
+            child: Text(
+              l10n.watch,
+              style: const TextStyle(color: Color(0xFF4ECDC4)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

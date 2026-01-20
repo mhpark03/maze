@@ -67,6 +67,10 @@ class AppLocalizations {
       'selectGame': 'Select Game',
       'arrowMaze': 'Arrow Maze',
       'adNotReady': 'Ad not ready. Showing hint for free.',
+      'hintConfirmTitle': 'Use Hint',
+      'hintConfirmMessage': 'Watch an ad to get a hint?',
+      'watch': 'Watch',
+      'cancel': 'Cancel',
     },
     'ko': {
       // Arrow Maze strings
@@ -122,6 +126,10 @@ class AppLocalizations {
       'selectGame': '게임 선택',
       'arrowMaze': '화살표 미로',
       'adNotReady': '광고가 준비되지 않았습니다. 무료로 힌트를 제공합니다.',
+      'hintConfirmTitle': '힌트 사용',
+      'hintConfirmMessage': '광고를 시청하고 힌트를 받으시겠습니까?',
+      'watch': '시청',
+      'cancel': '취소',
     },
     'ja': {
       // Arrow Maze strings
@@ -177,6 +185,10 @@ class AppLocalizations {
       'selectGame': 'ゲーム選択',
       'arrowMaze': '矢印迷路',
       'adNotReady': '広告の準備ができていません。ヒントを無料で表示します。',
+      'hintConfirmTitle': 'ヒントを使う',
+      'hintConfirmMessage': '広告を見てヒントを取得しますか？',
+      'watch': '視聴',
+      'cancel': 'キャンセル',
     },
     'zh': {
       // Arrow Maze strings
@@ -232,6 +244,10 @@ class AppLocalizations {
       'selectGame': '选择游戏',
       'arrowMaze': '箭头迷宫',
       'adNotReady': '广告未准备好。免费显示提示。',
+      'hintConfirmTitle': '使用提示',
+      'hintConfirmMessage': '观看广告获取提示？',
+      'watch': '观看',
+      'cancel': '取消',
     },
   };
 
@@ -284,6 +300,10 @@ class AppLocalizations {
   String get selectGame => _localizedValues[locale.languageCode]!['selectGame']!;
   String get arrowMaze => _localizedValues[locale.languageCode]!['arrowMaze']!;
   String get adNotReady => _localizedValues[locale.languageCode]!['adNotReady']!;
+  String get hintConfirmTitle => _localizedValues[locale.languageCode]!['hintConfirmTitle']!;
+  String get hintConfirmMessage => _localizedValues[locale.languageCode]!['hintConfirmMessage']!;
+  String get watch => _localizedValues[locale.languageCode]!['watch']!;
+  String get cancel => _localizedValues[locale.languageCode]!['cancel']!;
 
   // Methods with parameters
   String tapArrow(int count) =>

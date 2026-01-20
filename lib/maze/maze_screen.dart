@@ -158,26 +158,62 @@ class _MazeScreenState extends State<MazeScreen> {
     if (isGameWon) return;
 
     final l10n = AppLocalizations.of(context);
-    _adService.showRewardedAd(
-      onUserEarnedReward: () {
-        setState(() {
-          hintPath = maze.findPathToEnd();
-        });
-        HapticFeedback.mediumImpact();
-      },
-      onAdFailedToShow: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.adNotReady),
-            duration: const Duration(seconds: 2),
-            backgroundColor: Colors.grey.shade800,
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.grey.shade900,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.purple.withValues(alpha: 0.5), width: 2),
+        ),
+        title: Text(
+          l10n.hintConfirmTitle,
+          style: const TextStyle(color: Colors.purple),
+        ),
+        content: Text(
+          l10n.hintConfirmMessage,
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(
+              l10n.cancel,
+              style: const TextStyle(color: Colors.white54),
+            ),
           ),
-        );
-        setState(() {
-          hintPath = maze.findPathToEnd();
-        });
-        HapticFeedback.mediumImpact();
-      },
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _adService.showRewardedAd(
+                onUserEarnedReward: () {
+                  setState(() {
+                    hintPath = maze.findPathToEnd();
+                  });
+                  HapticFeedback.mediumImpact();
+                },
+                onAdFailedToShow: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(l10n.adNotReady),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: Colors.grey.shade800,
+                    ),
+                  );
+                  setState(() {
+                    hintPath = maze.findPathToEnd();
+                  });
+                  HapticFeedback.mediumImpact();
+                },
+              );
+            },
+            child: Text(
+              l10n.watch,
+              style: const TextStyle(color: Colors.purple),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
