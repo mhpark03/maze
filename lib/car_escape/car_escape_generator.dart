@@ -38,22 +38,18 @@ class CarEscapeGenerator {
       }
     }
 
-    // Fallback: generate a guaranteed multi-intersection puzzle
     return _generateGuaranteedPuzzle(gridSize, intersectionCount);
   }
 
   static CarJamPuzzle? _generatePuzzle(int gridSize, int intersectionCount, int targetCars) {
-    // Generate random intersections using grid-based approach
     List<Intersection> intersections = _generateGridIntersections(gridSize, intersectionCount);
     if (intersections.length < 2) return null;
 
-    // Generate road segments connecting intersections and edges
     List<RoadSegment> roadSegments = _generateRoadSegments(gridSize, intersections);
     if (roadSegments.isEmpty) return null;
 
-    // Generate cars on road segments with various turn types
-    List<GridCar> cars = _generateCars(gridSize, roadSegments, targetCars);
-    if (cars.length < 3) return null; // Need at least 3 cars
+    List<GridCar> cars = _generateCars(gridSize, roadSegments, intersections, targetCars);
+    if (cars.length < 3) return null;
 
     return CarJamPuzzle(
       gridSize: gridSize,
@@ -63,19 +59,15 @@ class CarEscapeGenerator {
     );
   }
 
-  // Generate intersections on a virtual grid to ensure good distribution
   static List<Intersection> _generateGridIntersections(int gridSize, int count) {
     List<Intersection> intersections = [];
 
-    // Calculate how many rows/cols of intersections we can fit
     int divisions = (sqrt(count) + 0.5).ceil();
     if (divisions < 2) divisions = 2;
 
-    // Available positions (excluding edges)
-    int availableSize = gridSize - 2; // positions 1 to gridSize-2
+    int availableSize = gridSize - 2;
     double spacing = availableSize / (divisions + 1);
 
-    // Generate candidate positions
     List<(int, int)> candidates = [];
     for (int i = 1; i <= divisions; i++) {
       for (int j = 1; j <= divisions; j++) {
@@ -85,7 +77,6 @@ class CarEscapeGenerator {
       }
     }
 
-    // Shuffle and pick required number
     candidates.shuffle(_random);
     Set<(int, int)> used = {};
 
@@ -97,7 +88,6 @@ class CarEscapeGenerator {
       }
     }
 
-    // If we still need more, add random positions
     int attempts = 0;
     while (intersections.length < count && attempts < 50) {
       int x = 1 + _random.nextInt(gridSize - 2);
@@ -116,10 +106,9 @@ class CarEscapeGenerator {
     List<RoadSegment> segments = [];
     Set<String> addedSegments = {};
 
-    // Each intersection connects to 2-4 edges
     for (var intersection in intersections) {
       List<int> directions = [0, 1, 2, 3]..shuffle(_random);
-      int connectCount = 2 + _random.nextInt(2); // 2-3 connections to edges
+      int connectCount = 2 + _random.nextInt(2);
 
       for (int i = 0; i < connectCount && i < directions.length; i++) {
         RoadSegment? segment = _createEdgeSegment(intersection, directions[i], gridSize);
@@ -133,13 +122,11 @@ class CarEscapeGenerator {
       }
     }
 
-    // Connect nearby intersections (same row or column)
     for (int i = 0; i < intersections.length; i++) {
       for (int j = i + 1; j < intersections.length; j++) {
         var a = intersections[i];
         var b = intersections[j];
 
-        // Connect if on same row or column
         if (a.x == b.x || a.y == b.y) {
           var segment = RoadSegment(x1: a.x, y1: a.y, x2: b.x, y2: b.y);
           String key = _segmentKey(segment);
@@ -156,26 +143,14 @@ class CarEscapeGenerator {
 
   static RoadSegment? _createEdgeSegment(Intersection intersection, int direction, int gridSize) {
     switch (direction) {
-      case 0: // Up to edge
-        return RoadSegment(
-          x1: intersection.x, y1: intersection.y,
-          x2: intersection.x, y2: 0,
-        );
-      case 1: // Down to edge
-        return RoadSegment(
-          x1: intersection.x, y1: intersection.y,
-          x2: intersection.x, y2: gridSize - 1,
-        );
-      case 2: // Left to edge
-        return RoadSegment(
-          x1: intersection.x, y1: intersection.y,
-          x2: 0, y2: intersection.y,
-        );
-      case 3: // Right to edge
-        return RoadSegment(
-          x1: intersection.x, y1: intersection.y,
-          x2: gridSize - 1, y2: intersection.y,
-        );
+      case 0:
+        return RoadSegment(x1: intersection.x, y1: intersection.y, x2: intersection.x, y2: 0);
+      case 1:
+        return RoadSegment(x1: intersection.x, y1: intersection.y, x2: intersection.x, y2: gridSize - 1);
+      case 2:
+        return RoadSegment(x1: intersection.x, y1: intersection.y, x2: 0, y2: intersection.y);
+      case 3:
+        return RoadSegment(x1: intersection.x, y1: intersection.y, x2: gridSize - 1, y2: intersection.y);
     }
     return null;
   }
@@ -188,64 +163,84 @@ class CarEscapeGenerator {
     return '$minX,$minY-$maxX,$maxY';
   }
 
-  static List<GridCar> _generateCars(int gridSize, List<RoadSegment> roadSegments, int targetCars) {
+  static List<GridCar> _generateCars(int gridSize, List<RoadSegment> roadSegments, List<Intersection> intersections, int targetCars) {
     List<GridCar> cars = [];
     Set<(int, int)> occupied = {};
     List<Color> shuffledColors = List.from(_carColors)..shuffle(_random);
     int carId = 0;
 
-    // Collect all road cells
+    // Get intersection positions as a set
+    Set<(int, int)> intersectionSet = intersections.map((i) => (i.x, i.y)).toSet();
+
+    // Collect road cells that are NOT intersections
     Set<(int, int)> roadCells = {};
     for (var segment in roadSegments) {
-      roadCells.addAll(segment.cells);
+      for (var cell in segment.cells) {
+        if (!intersectionSet.contains(cell)) {
+          roadCells.add(cell);
+        }
+      }
     }
 
-    // Find cells with possible entry/exit combinations
+    // Find valid car placements
     List<_CarPlacement> possiblePlacements = [];
 
     for (var cell in roadCells) {
-      // Check which road types exist at this cell
-      bool hasHorizontalRoad = _hasRoadOfType(cell.$1, cell.$2, true, roadSegments);
-      bool hasVerticalRoad = _hasRoadOfType(cell.$1, cell.$2, false, roadSegments);
+      // Determine which direction the car can travel (based on road type)
+      bool isOnHorizontal = _isOnHorizontalRoad(cell.$1, cell.$2, roadSegments);
+      bool isOnVertical = _isOnVerticalRoad(cell.$1, cell.$2, roadSegments);
 
-      // Get available directions based on actual road segments
-      List<CarFacing> availableDirections = [];
-      if (hasHorizontalRoad) {
-        availableDirections.add(CarFacing.left);
-        availableDirections.add(CarFacing.right);
+      List<CarFacing> travelDirections = [];
+      if (isOnHorizontal) {
+        travelDirections.add(CarFacing.left);
+        travelDirections.add(CarFacing.right);
       }
-      if (hasVerticalRoad) {
-        availableDirections.add(CarFacing.up);
-        availableDirections.add(CarFacing.down);
+      if (isOnVertical) {
+        travelDirections.add(CarFacing.up);
+        travelDirections.add(CarFacing.down);
       }
 
-      // For each entry direction, check what turn types are valid
-      for (var entryDir in availableDirections) {
-        for (var turnType in TurnType.values) {
-          CarFacing exitDir = turnType.getExitDirection(entryDir);
+      for (var travelDir in travelDirections) {
+        // Find the intersection this car would reach
+        var intersectionInfo = _findNextIntersection(cell.$1, cell.$2, travelDir, gridSize, roadSegments, intersectionSet);
 
-          // Check if exit direction has a road at this position
-          if (!availableDirections.contains(exitDir)) continue;
+        if (intersectionInfo != null) {
+          var (intX, intY) = intersectionInfo;
 
-          // For turns (not straight/U-turn), we need BOTH horizontal and vertical roads
-          if (turnType == TurnType.leftTurn || turnType == TurnType.rightTurn) {
-            if (!hasHorizontalRoad || !hasVerticalRoad) continue;
+          // Check what turns are possible at this intersection
+          for (var turnType in TurnType.values) {
+            CarFacing exitDir = turnType.getExitDirection(travelDir);
+
+            // Check if there's a road in the exit direction at the intersection
+            if (_hasRoadInDirection(intX, intY, exitDir, roadSegments)) {
+              // Check if the car can exit to edge after turning
+              if (_canReachEdge(intX, intY, exitDir, gridSize, roadSegments)) {
+                // Additional validation: simulate the full path
+                if (_validateFullPath(cell.$1, cell.$2, travelDir, turnType, gridSize, roadSegments, intersectionSet)) {
+                  possiblePlacements.add(_CarPlacement(
+                    x: cell.$1,
+                    y: cell.$2,
+                    travelDirection: travelDir,
+                    turnType: turnType,
+                  ));
+                }
+              }
+            }
           }
-
-          // Check if we can actually exit in that direction to the edge
-          if (_canExitToEdge(cell.$1, cell.$2, exitDir, gridSize, roadCells)) {
+        } else {
+          // No intersection found, car goes straight to edge - only allow straight
+          if (_canReachEdge(cell.$1, cell.$2, travelDir, gridSize, roadSegments)) {
             possiblePlacements.add(_CarPlacement(
               x: cell.$1,
               y: cell.$2,
-              entryDirection: entryDir,
-              turnType: turnType,
+              travelDirection: travelDir,
+              turnType: TurnType.straight,
             ));
           }
         }
       }
     }
 
-    // Shuffle and pick placements
     possiblePlacements.shuffle(_random);
 
     for (var placement in possiblePlacements) {
@@ -256,7 +251,7 @@ class CarEscapeGenerator {
         id: carId,
         gridX: placement.x,
         gridY: placement.y,
-        entryDirection: placement.entryDirection,
+        travelDirection: placement.travelDirection,
         turnType: placement.turnType,
         color: shuffledColors[carId % shuffledColors.length],
       ));
@@ -267,31 +262,127 @@ class CarEscapeGenerator {
     return cars;
   }
 
-  static bool _hasRoadOfType(int x, int y, bool horizontal, List<RoadSegment> roadSegments) {
+  static bool _isOnHorizontalRoad(int x, int y, List<RoadSegment> roadSegments) {
     for (var segment in roadSegments) {
-      if (!segment.containsPoint(x, y)) continue;
-      if (horizontal && segment.isHorizontal) return true;
-      if (!horizontal && segment.isVertical) return true;
+      if (segment.isHorizontal && segment.containsPoint(x, y)) return true;
     }
     return false;
   }
 
-  static bool _canExitToEdge(int x, int y, CarFacing facing, int gridSize, Set<(int, int)> roadCells) {
+  static bool _isOnVerticalRoad(int x, int y, List<RoadSegment> roadSegments) {
+    for (var segment in roadSegments) {
+      if (segment.isVertical && segment.containsPoint(x, y)) return true;
+    }
+    return false;
+  }
+
+  static (int, int)? _findNextIntersection(int x, int y, CarFacing direction, int gridSize, List<RoadSegment> roadSegments, Set<(int, int)> intersections) {
     int cx = x;
     int cy = y;
 
     while (true) {
-      cx += facing.dx;
-      cy += facing.dy;
+      cx += direction.dx;
+      cy += direction.dy;
+
+      if (cx < 0 || cx >= gridSize || cy < 0 || cy >= gridSize) {
+        return null; // Reached edge without finding intersection
+      }
+
+      if (intersections.contains((cx, cy))) {
+        return (cx, cy);
+      }
+
+      // Check if still on road
+      bool onRoad = false;
+      for (var segment in roadSegments) {
+        if (segment.containsPoint(cx, cy)) {
+          onRoad = true;
+          break;
+        }
+      }
+      if (!onRoad) return null;
+    }
+  }
+
+  static bool _hasRoadInDirection(int x, int y, CarFacing direction, List<RoadSegment> roadSegments) {
+    for (var segment in roadSegments) {
+      if (!segment.containsPoint(x, y)) continue;
+      if (direction.isHorizontal && segment.isHorizontal) return true;
+      if (direction.isVertical && segment.isVertical) return true;
+    }
+    return false;
+  }
+
+  static bool _canReachEdge(int x, int y, CarFacing direction, int gridSize, List<RoadSegment> roadSegments) {
+    int cx = x;
+    int cy = y;
+
+    while (true) {
+      cx += direction.dx;
+      cy += direction.dy;
 
       if (cx < 0 || cx >= gridSize || cy < 0 || cy >= gridSize) {
         return true;
       }
 
-      if (!roadCells.contains((cx, cy))) {
-        return false;
+      bool onRoad = false;
+      for (var segment in roadSegments) {
+        if (segment.containsPoint(cx, cy)) {
+          onRoad = true;
+          break;
+        }
+      }
+      if (!onRoad) return false;
+    }
+  }
+
+  // Validate the full path: car -> intersection -> turn -> exit
+  static bool _validateFullPath(int startX, int startY, CarFacing travelDir, TurnType turnType, int gridSize, List<RoadSegment> roadSegments, Set<(int, int)> intersections) {
+    int x = startX;
+    int y = startY;
+    CarFacing currentDir = travelDir;
+    bool turnMade = false;
+    int steps = 0;
+    int maxSteps = gridSize * 2;
+
+    while (steps < maxSteps) {
+      int nextX = x + currentDir.dx;
+      int nextY = y + currentDir.dy;
+
+      // Reached edge - this is success
+      if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize) {
+        return true;
+      }
+
+      // Check if next cell is on road
+      bool onRoad = false;
+      for (var segment in roadSegments) {
+        if (segment.containsPoint(nextX, nextY)) {
+          onRoad = true;
+          break;
+        }
+      }
+      if (!onRoad) return false;
+
+      x = nextX;
+      y = nextY;
+      steps++;
+
+      // Apply turn at intersection (only once)
+      if (!turnMade && intersections.contains((x, y))) {
+        CarFacing newDir = turnType.getExitDirection(currentDir);
+
+        // Verify there's a road in the new direction
+        if (!_hasRoadInDirection(x, y, newDir, roadSegments)) {
+          return false;
+        }
+
+        currentDir = newDir;
+        turnMade = true;
       }
     }
+
+    return false; // Too many steps without reaching edge
   }
 
   static bool _isSolvable(CarJamPuzzle puzzle) {
@@ -321,13 +412,11 @@ class CarEscapeGenerator {
     return testPuzzle.isComplete;
   }
 
-  // Generate a guaranteed working puzzle with multiple intersections
   static CarJamPuzzle _generateGuaranteedPuzzle(int gridSize, int intersectionCount) {
     List<Intersection> intersections = [];
     List<RoadSegment> roadSegments = [];
     Set<String> addedSegments = {};
 
-    // Create a grid pattern of intersections
     int cols = (sqrt(intersectionCount) + 0.5).ceil();
     int rows = (intersectionCount / cols).ceil();
 
@@ -340,7 +429,6 @@ class CarEscapeGenerator {
         int x = (1 + xSpacing * col).round().clamp(1, gridSize - 2);
         int y = (1 + ySpacing * row).round().clamp(1, gridSize - 2);
 
-        // Avoid duplicate positions
         bool duplicate = intersections.any((i) => i.x == x && i.y == y);
         if (!duplicate) {
           intersections.add(Intersection(x, y));
@@ -349,24 +437,15 @@ class CarEscapeGenerator {
       }
     }
 
-    // Connect each intersection to at least 2 edges
     for (var intersection in intersections) {
-      // Horizontal road (left and right edges)
-      var hSegment = RoadSegment(
-        x1: 0, y1: intersection.y,
-        x2: gridSize - 1, y2: intersection.y,
-      );
+      var hSegment = RoadSegment(x1: 0, y1: intersection.y, x2: gridSize - 1, y2: intersection.y);
       String hKey = _segmentKey(hSegment);
       if (!addedSegments.contains(hKey)) {
         roadSegments.add(hSegment);
         addedSegments.add(hKey);
       }
 
-      // Vertical road (top and bottom edges)
-      var vSegment = RoadSegment(
-        x1: intersection.x, y1: 0,
-        x2: intersection.x, y2: gridSize - 1,
-      );
+      var vSegment = RoadSegment(x1: intersection.x, y1: 0, x2: intersection.x, y2: gridSize - 1);
       String vKey = _segmentKey(vSegment);
       if (!addedSegments.contains(vKey)) {
         roadSegments.add(vSegment);
@@ -374,10 +453,14 @@ class CarEscapeGenerator {
       }
     }
 
-    // Generate cars
+    Set<(int, int)> intersectionSet = intersections.map((i) => (i.x, i.y)).toSet();
     Set<(int, int)> roadCells = {};
     for (var segment in roadSegments) {
-      roadCells.addAll(segment.cells);
+      for (var cell in segment.cells) {
+        if (!intersectionSet.contains(cell)) {
+          roadCells.add(cell);
+        }
+      }
     }
 
     List<GridCar> cars = [];
@@ -385,61 +468,61 @@ class CarEscapeGenerator {
     int carId = 0;
     Set<(int, int)> occupied = {};
 
-    // Place cars with various turn types
     List<(int, int)> cellList = roadCells.toList()..shuffle(_random);
 
     for (var cell in cellList) {
       if (cars.length >= intersectionCount * 2) break;
       if (occupied.contains(cell)) continue;
 
-      // Check which road types exist at this cell
-      bool hasHorizontalRoad = _hasRoadOfType(cell.$1, cell.$2, true, roadSegments);
-      bool hasVerticalRoad = _hasRoadOfType(cell.$1, cell.$2, false, roadSegments);
+      bool isOnHorizontal = _isOnHorizontalRoad(cell.$1, cell.$2, roadSegments);
+      bool isOnVertical = _isOnVerticalRoad(cell.$1, cell.$2, roadSegments);
 
-      // Get available directions based on actual road segments
-      List<CarFacing> availableDirs = [];
-      if (hasHorizontalRoad) {
-        availableDirs.add(CarFacing.left);
-        availableDirs.add(CarFacing.right);
+      List<CarFacing> travelDirs = [];
+      if (isOnHorizontal) {
+        travelDirs.add(CarFacing.left);
+        travelDirs.add(CarFacing.right);
       }
-      if (hasVerticalRoad) {
-        availableDirs.add(CarFacing.up);
-        availableDirs.add(CarFacing.down);
+      if (isOnVertical) {
+        travelDirs.add(CarFacing.up);
+        travelDirs.add(CarFacing.down);
       }
 
-      if (availableDirs.isEmpty) continue;
+      if (travelDirs.isEmpty) continue;
 
-      // Try to find a valid entry/turn combination
+      travelDirs.shuffle(_random);
       List<TurnType> turnTypes = List.from(TurnType.values)..shuffle(_random);
-      List<CarFacing> entryDirs = List.from(availableDirs)..shuffle(_random);
 
       bool placed = false;
-      for (var entryDir in entryDirs) {
+      for (var travelDir in travelDirs) {
         if (placed) break;
+
+        var intersectionInfo = _findNextIntersection(cell.$1, cell.$2, travelDir, gridSize, roadSegments, intersectionSet);
+
         for (var turnType in turnTypes) {
-          CarFacing exitDir = turnType.getExitDirection(entryDir);
+          if (placed) break;
 
-          if (!availableDirs.contains(exitDir)) continue;
+          if (intersectionInfo != null) {
+            var (intX, intY) = intersectionInfo;
+            CarFacing exitDir = turnType.getExitDirection(travelDir);
 
-          // For turns, we need BOTH horizontal and vertical roads
-          if (turnType == TurnType.leftTurn || turnType == TurnType.rightTurn) {
-            if (!hasHorizontalRoad || !hasVerticalRoad) continue;
+            if (!_hasRoadInDirection(intX, intY, exitDir, roadSegments)) continue;
+            if (!_canReachEdge(intX, intY, exitDir, gridSize, roadSegments)) continue;
+          } else {
+            if (turnType != TurnType.straight) continue;
+            if (!_canReachEdge(cell.$1, cell.$2, travelDir, gridSize, roadSegments)) continue;
           }
-
-          if (!_canExitToEdge(cell.$1, cell.$2, exitDir, gridSize, roadCells)) continue;
 
           cars.add(GridCar(
             id: carId,
             gridX: cell.$1,
             gridY: cell.$2,
-            entryDirection: entryDir,
+            travelDirection: travelDir,
             turnType: turnType,
             color: shuffledColors[carId % shuffledColors.length],
           ));
           occupied.add(cell);
           carId++;
           placed = true;
-          break;
         }
       }
     }
@@ -455,13 +538,13 @@ class CarEscapeGenerator {
 
 class _CarPlacement {
   final int x, y;
-  final CarFacing entryDirection;
+  final CarFacing travelDirection;
   final TurnType turnType;
 
   _CarPlacement({
     required this.x,
     required this.y,
-    required this.entryDirection,
+    required this.travelDirection,
     required this.turnType,
   });
 }

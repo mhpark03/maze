@@ -23,7 +23,7 @@ class CarEscapeBoard extends StatefulWidget {
 class _CarEscapeBoardState extends State<CarEscapeBoard>
     with TickerProviderStateMixin {
   final Map<int, AnimationController> _exitControllers = {};
-  final Map<int, Animation<Offset>> _exitAnimations = {};
+  final Map<int, List<Offset>> _exitPaths = {}; // Store the path for each car
   final Map<int, AnimationController> _shakeControllers = {};
   final Map<int, Animation<double>> _shakeAnimations = {};
   int? _highlightedBlockingCarId;
@@ -51,46 +51,70 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
   }
 
   void _startExitAnimation(GridCar car) {
+    // Build the full path: current position -> path cells -> exit off edge
+    final gridPath = widget.puzzle.getFullPath(car);
+    List<Offset> pathOffsets = [Offset.zero]; // Start at current position (0,0 offset)
+
+    // Add each cell in the path as offset from starting position
+    for (var cell in gridPath) {
+      pathOffsets.add(Offset(
+        (cell.$1 - car.gridX).toDouble(),
+        (cell.$2 - car.gridY).toDouble(),
+      ));
+    }
+
+    // Determine the exit direction (after any turns)
+    CarFacing finalDirection = car.travelDirection;
+    if (gridPath.isNotEmpty) {
+      // Check if car reached an intersection and turned
+      for (var cell in gridPath) {
+        if (widget.puzzle.isIntersection(cell.$1, cell.$2)) {
+          CarFacing newDir = car.turnType.getExitDirection(finalDirection);
+          if (widget.puzzle.hasRoadInDirection(cell.$1, cell.$2, newDir)) {
+            finalDirection = newDir;
+          }
+          break; // Only turn at first intersection
+        }
+      }
+    }
+
+    // Add final exit point off the edge
+    final lastOffset = pathOffsets.last;
+    double exitX = lastOffset.dx;
+    double exitY = lastOffset.dy;
+    switch (finalDirection) {
+      case CarFacing.left:
+        exitX -= 3;
+        break;
+      case CarFacing.right:
+        exitX += 3;
+        break;
+      case CarFacing.up:
+        exitY -= 3;
+        break;
+      case CarFacing.down:
+        exitY += 3;
+        break;
+    }
+    pathOffsets.add(Offset(exitX, exitY));
+
+    // Calculate animation duration based on path length
+    final duration = Duration(milliseconds: 150 * pathOffsets.length);
+
     final controller = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: duration,
       vsync: this,
     );
 
-    // Calculate exit offset based on exit direction (after turn)
-    final exitDir = car.exitDirection;
-    double endX = 0, endY = 0;
-    switch (exitDir) {
-      case CarFacing.left:
-        endX = -(car.gridX + 2).toDouble();
-        break;
-      case CarFacing.right:
-        endX = (widget.puzzle.gridSize - car.gridX + 1).toDouble();
-        break;
-      case CarFacing.up:
-        endY = -(car.gridY + 2).toDouble();
-        break;
-      case CarFacing.down:
-        endY = (widget.puzzle.gridSize - car.gridY + 1).toDouble();
-        break;
-    }
-
-    final animation = Tween<Offset>(
-      begin: Offset.zero,
-      end: Offset(endX, endY),
-    ).animate(CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeInQuad,
-    ));
-
     _exitControllers[car.id] = controller;
-    _exitAnimations[car.id] = animation;
+    _exitPaths[car.id] = pathOffsets;
     car.isExiting = true;
 
     controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         widget.onCarExited(car);
         _exitControllers.remove(car.id)?.dispose();
-        _exitAnimations.remove(car.id);
+        _exitPaths.remove(car.id);
         if (mounted) setState(() {});
       }
     });
@@ -98,6 +122,26 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
     controller.forward();
     setState(() {});
     widget.onCarTap(car);
+  }
+
+  // Interpolate position along the path based on animation value (0.0 to 1.0)
+  Offset _getPathPosition(List<Offset> path, double t) {
+    if (path.isEmpty) return Offset.zero;
+    if (path.length == 1) return path[0];
+
+    // Calculate which segment we're on
+    double totalSegments = path.length - 1;
+    double segmentProgress = t * totalSegments;
+    int segmentIndex = segmentProgress.floor().clamp(0, path.length - 2);
+    double localT = segmentProgress - segmentIndex;
+
+    // Linear interpolation between segment points
+    Offset start = path[segmentIndex];
+    Offset end = path[segmentIndex + 1];
+    return Offset(
+      start.dx + (end.dx - start.dx) * localT,
+      start.dy + (end.dy - start.dy) * localT,
+    );
   }
 
   void _startShakeAnimation(GridCar car) {
@@ -196,7 +240,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
   }
 
   Widget _buildCar(GridCar car, double cellSize) {
-    if (car.hasExited && !_exitAnimations.containsKey(car.id)) {
+    if (car.hasExited && !_exitPaths.containsKey(car.id)) {
       return const SizedBox.shrink();
     }
 
@@ -204,7 +248,8 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
     double left = car.gridX * cellSize + (cellSize - carSize) / 2;
     double top = car.gridY * cellSize + (cellSize - carSize) / 2;
 
-    final exitAnim = _exitAnimations[car.id];
+    final exitPath = _exitPaths[car.id];
+    final exitController = _exitControllers[car.id];
     final shakeAnim = _shakeAnimations[car.id];
     final isHighlighted = _highlightedBlockingCarId == car.id;
     final isHintCar = widget.hintCarId == car.id;
@@ -259,7 +304,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
             // Turn type icon
             Center(
               child: Transform.rotate(
-                angle: car.entryDirection.rotation * pi / 180,
+                angle: car.travelDirection.rotation * pi / 180,
                 child: Icon(
                   car.turnType.icon,
                   color: Colors.white.withValues(alpha: 0.9),
@@ -288,16 +333,16 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
       );
     }
 
-    if (exitAnim != null) {
+    if (exitPath != null && exitController != null) {
       return AnimatedBuilder(
-        animation: exitAnim,
+        animation: exitController,
         builder: (context, child) {
-          final offset = exitAnim.value;
+          final offset = _getPathPosition(exitPath, exitController.value);
           return Positioned(
             left: left + offset.dx * cellSize,
             top: top + offset.dy * cellSize,
             child: Opacity(
-              opacity: (1 - _exitControllers[car.id]!.value * 0.5).clamp(0.0, 1.0),
+              opacity: (1 - exitController.value * 0.5).clamp(0.0, 1.0),
               child: child,
             ),
           );

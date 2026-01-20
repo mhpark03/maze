@@ -79,7 +79,6 @@ extension CarFacingExtension on CarFacing {
     }
   }
 
-  // Turn left from this direction
   CarFacing get turnLeft {
     switch (this) {
       case CarFacing.up: return CarFacing.left;
@@ -89,7 +88,6 @@ extension CarFacingExtension on CarFacing {
     }
   }
 
-  // Turn right from this direction
   CarFacing get turnRight {
     switch (this) {
       case CarFacing.up: return CarFacing.right;
@@ -103,17 +101,16 @@ extension CarFacingExtension on CarFacing {
 enum TurnType { straight, leftTurn, rightTurn, uTurn }
 
 extension TurnTypeExtension on TurnType {
-  // Get exit direction based on entry direction and turn type
-  CarFacing getExitDirection(CarFacing entryDirection) {
+  CarFacing getExitDirection(CarFacing travelDirection) {
     switch (this) {
       case TurnType.straight:
-        return entryDirection;
+        return travelDirection;
       case TurnType.leftTurn:
-        return entryDirection.turnLeft;
+        return travelDirection.turnLeft;
       case TurnType.rightTurn:
-        return entryDirection.turnRight;
+        return travelDirection.turnRight;
       case TurnType.uTurn:
-        return entryDirection.opposite;
+        return travelDirection.opposite;
     }
   }
 
@@ -135,8 +132,8 @@ class GridCar {
   final int id;
   int gridX;
   int gridY;
-  final CarFacing entryDirection; // Direction the car is moving (entering from opposite)
-  final TurnType turnType;
+  final CarFacing travelDirection; // Direction the car is moving
+  final TurnType turnType; // What to do at the next intersection
   final Color color;
   bool isExiting = false;
   bool hasExited = false;
@@ -145,19 +142,19 @@ class GridCar {
     required this.id,
     required this.gridX,
     required this.gridY,
-    required this.entryDirection,
+    required this.travelDirection,
     required this.turnType,
     required this.color,
   });
 
-  // The direction the car will exit after the turn
-  CarFacing get exitDirection => turnType.getExitDirection(entryDirection);
+  // The direction the car will exit after making its turn
+  CarFacing get exitDirection => turnType.getExitDirection(travelDirection);
 
   GridCar copyWith({
     int? id,
     int? gridX,
     int? gridY,
-    CarFacing? entryDirection,
+    CarFacing? travelDirection,
     TurnType? turnType,
     Color? color,
   }) {
@@ -165,7 +162,7 @@ class GridCar {
       id: id ?? this.id,
       gridX: gridX ?? this.gridX,
       gridY: gridY ?? this.gridY,
-      entryDirection: entryDirection ?? this.entryDirection,
+      travelDirection: travelDirection ?? this.travelDirection,
       turnType: turnType ?? this.turnType,
       color: color ?? this.color,
     );
@@ -175,7 +172,6 @@ class GridCar {
   }
 }
 
-// Road segment between two points
 class RoadSegment {
   final int x1, y1, x2, y2;
 
@@ -189,7 +185,6 @@ class RoadSegment {
   bool get isHorizontal => y1 == y2;
   bool get isVertical => x1 == x2;
 
-  // Check if a point is on this road segment
   bool containsPoint(int x, int y) {
     if (isHorizontal && y == y1) {
       int minX = x1 < x2 ? x1 : x2;
@@ -204,7 +199,6 @@ class RoadSegment {
     return false;
   }
 
-  // Get all cells on this segment
   List<(int, int)> get cells {
     List<(int, int)> result = [];
     if (isHorizontal) {
@@ -221,13 +215,6 @@ class RoadSegment {
       }
     }
     return result;
-  }
-
-  // Check if this segment connects to grid edge
-  bool connectsToEdge(int gridSize) {
-    return x1 == 0 || x2 == 0 || y1 == 0 || y2 == 0 ||
-           x1 == gridSize - 1 || x2 == gridSize - 1 ||
-           y1 == gridSize - 1 || y2 == gridSize - 1;
   }
 }
 
@@ -268,7 +255,6 @@ class CarJamPuzzle {
     return activeCars.map((c) => (c.gridX, c.gridY)).toSet();
   }
 
-  // Check if a point is on any road
   bool isOnRoad(int x, int y) {
     for (var segment in roadSegments) {
       if (segment.containsPoint(x, y)) return true;
@@ -276,7 +262,10 @@ class CarJamPuzzle {
     return false;
   }
 
-  // Check if there's a road in a specific direction at a point
+  bool isIntersection(int x, int y) {
+    return intersections.any((i) => i.x == x && i.y == y);
+  }
+
   bool hasRoadInDirection(int x, int y, CarFacing direction) {
     for (var segment in roadSegments) {
       if (!segment.containsPoint(x, y)) continue;
@@ -286,64 +275,81 @@ class CarJamPuzzle {
     return false;
   }
 
-  // Get the path a car would take to exit
-  List<(int, int)> getPathToExit(GridCar car) {
+  // Get the full path: car position -> intersection -> turn -> exit
+  List<(int, int)> getFullPath(GridCar car) {
     List<(int, int)> path = [];
-    CarFacing exitDir = car.exitDirection;
     int x = car.gridX;
     int y = car.gridY;
+    CarFacing currentDir = car.travelDirection;
+    bool turnMade = false;
 
-    while (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-      x += exitDir.dx;
-      y += exitDir.dy;
+    // Phase 1: Travel to intersection (or edge)
+    while (true) {
+      int nextX = x + currentDir.dx;
+      int nextY = y + currentDir.dy;
 
-      // Check if still on a road
-      if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-        if (isOnRoad(x, y)) {
-          path.add((x, y));
-        } else {
-          // Hit non-road area, can't continue
-          return [];
+      // Reached edge before intersection
+      if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize) {
+        break;
+      }
+
+      // Check if next cell is on road
+      if (!isOnRoad(nextX, nextY)) {
+        break;
+      }
+
+      path.add((nextX, nextY));
+      x = nextX;
+      y = nextY;
+
+      // Check if we reached an intersection and haven't turned yet
+      if (!turnMade && isIntersection(x, y)) {
+        // Apply turn
+        CarFacing newDir = car.turnType.getExitDirection(currentDir);
+
+        // Check if we can turn (there's a road in that direction)
+        if (hasRoadInDirection(x, y, newDir)) {
+          currentDir = newDir;
+          turnMade = true;
         }
+        // If can't turn, continue straight (or stop if no road)
       }
     }
+
     return path;
   }
 
   bool canCarExit(GridCar car) {
     if (car.hasExited || car.isExiting) return false;
 
-    // Check if there's a road in the exit direction
-    if (!hasRoadInDirection(car.gridX, car.gridY, car.exitDirection)) {
+    final occupied = occupiedCells;
+    final path = getFullPath(car);
+
+    // Must have a path to edge
+    if (path.isEmpty) {
+      // Check if car is already at edge
+      int nextX = car.gridX + car.travelDirection.dx;
+      int nextY = car.gridY + car.travelDirection.dy;
+      if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize) {
+        return true;
+      }
       return false;
     }
 
-    final occupied = occupiedCells;
-    final path = getPathToExit(car);
-
-    // Path must lead to edge
-    if (path.isEmpty) {
-      // Check if car is already at edge
-      int nextX = car.gridX + car.exitDirection.dx;
-      int nextY = car.gridY + car.exitDirection.dy;
-      if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize) {
-        return true; // At edge, can exit immediately
-      }
-      return false; // Not at edge and path blocked by non-road
-    }
-
+    // Check if path is clear
     for (var cell in path) {
       if (occupied.contains(cell)) {
         return false;
       }
     }
+
     return true;
   }
 
   GridCar? getBlockingCar(GridCar car) {
     if (car.hasExited || car.isExiting) return null;
 
-    final path = getPathToExit(car);
+    final path = getFullPath(car);
 
     for (var cell in path) {
       for (var other in activeCars) {
