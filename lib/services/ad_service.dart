@@ -11,6 +11,9 @@ class AdService {
   RewardedAd? _rewardedAd;
   bool _isRewardedAdReady = false;
 
+  /// Returns true if ads are supported on the current platform (Android/iOS only)
+  bool get isSupported => Platform.isAndroid || Platform.isIOS;
+
   bool get isBannerAdReady => _isBannerAdReady;
   BannerAd? get bannerAd => _bannerAd;
   bool get isRewardedAdReady => _isRewardedAdReady;
@@ -35,10 +38,12 @@ class AdService {
   }
 
   Future<void> initialize() async {
+    if (!isSupported) return;
     await MobileAds.instance.initialize();
   }
 
   void loadBannerAd({required Function() onAdLoaded}) {
+    if (!isSupported) return;
     _bannerAd = BannerAd(
       adUnitId: bannerAdUnitId,
       size: AdSize.banner,
@@ -64,6 +69,7 @@ class AdService {
   }
 
   void loadRewardedAd() {
+    if (!isSupported) return;
     RewardedAd.load(
       adUnitId: rewardedAdUnitId,
       request: const AdRequest(),
@@ -85,6 +91,12 @@ class AdService {
     Function()? onAdDismissed,
     Function()? onAdFailedToShow,
   }) {
+    if (!isSupported) {
+      // On unsupported platforms, grant reward directly
+      onUserEarnedReward();
+      onAdDismissed?.call();
+      return;
+    }
     if (_rewardedAd == null) {
       onAdFailedToShow?.call();
       loadRewardedAd();

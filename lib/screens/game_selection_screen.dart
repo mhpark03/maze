@@ -7,6 +7,8 @@ import '../l10n/locale_provider.dart';
 import '../services/ad_service.dart';
 import 'game_screen.dart';
 import '../maze/maze_screen.dart';
+import '../parking_jam/parking_screen.dart';
+import '../parking_jam/models/parking_models.dart';
 
 class GameSelectionScreen extends StatefulWidget {
   const GameSelectionScreen({super.key});
@@ -56,7 +58,7 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
         child: Column(
           children: [
             Expanded(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -75,6 +77,14 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                       icon: Icons.grid_4x4,
                       color: Colors.purple,
                       onTap: () => _showMazeDifficultyDialog(context, l10n),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildGameCard(
+                      context: context,
+                      title: l10n.parkingJam,
+                      icon: Icons.local_parking,
+                      color: Colors.orange,
+                      onTap: () => _showParkingJamDifficultyDialog(context, l10n),
                     ),
                   ],
                 ),
@@ -241,6 +251,62 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => MazeScreen(difficulty: difficulty),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showParkingJamDifficultyDialog(BuildContext context, AppLocalizations l10n) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2D2D44),
+        title: Text(l10n.selectDifficulty, style: const TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildParkingJamDifficultyOption(
+              context: context,
+              title: '${l10n.easy} (10x10)',
+              difficulty: ParkingDifficulty.easy,
+            ),
+            _buildParkingJamDifficultyOption(
+              context: context,
+              title: '${l10n.normal} (15x15)',
+              difficulty: ParkingDifficulty.medium,
+            ),
+            _buildParkingJamDifficultyOption(
+              context: context,
+              title: '${l10n.hard} (20x20)',
+              difficulty: ParkingDifficulty.hard,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.close, style: const TextStyle(color: Colors.orange)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParkingJamDifficultyOption({
+    required BuildContext context,
+    required String title,
+    required ParkingDifficulty difficulty,
+  }) {
+    return ListTile(
+      title: Text(title, style: const TextStyle(color: Colors.white70)),
+      leading: const Icon(Icons.local_parking, color: Colors.orange),
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ParkingScreen(difficulty: difficulty),
           ),
         );
       },

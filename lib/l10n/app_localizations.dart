@@ -71,6 +71,20 @@ class AppLocalizations {
       'hintConfirmMessage': 'Watch an ad to get a hint?',
       'watch': 'Watch',
       'cancel': 'Cancel',
+      // Parking Jam strings
+      'parkingJam': 'Parking Jam',
+      'parkingCongratulations': 'Congratulations!',
+      'parkingCleared': 'All cars have exited!',
+      'parkingCars': 'Cars: {count}',
+      'parkingCarsLabel': 'Cars',
+      'parkingInstruction': 'Tap a car to make it exit in its facing direction',
+      'parkingRulesTitle': 'How to Play',
+      'parkingRulesObjective': 'Objective',
+      'parkingRulesObjectiveDesc': 'Clear all cars from the parking lot by tapping them in the correct order.',
+      'parkingRulesControls': 'Controls',
+      'parkingRulesControlsDesc': 'Tap a car to make it exit. Each car moves in the direction of its arrow.',
+      'parkingRulesTips': 'Tips',
+      'parkingRulesTipsDesc': 'A car can only exit if there are no other cars blocking its path. Find the right order to clear all cars!',
     },
     'ko': {
       // Arrow Maze strings
@@ -130,6 +144,20 @@ class AppLocalizations {
       'hintConfirmMessage': '광고를 시청하고 힌트를 받으시겠습니까?',
       'watch': '시청',
       'cancel': '취소',
+      // Parking Jam strings
+      'parkingJam': '주차장 탈출',
+      'parkingCongratulations': '축하합니다!',
+      'parkingCleared': '모든 차량이 탈출했습니다!',
+      'parkingCars': '차량: {count}대',
+      'parkingCarsLabel': '차량',
+      'parkingInstruction': '차량을 탭하면 바라보는 방향으로 출발합니다',
+      'parkingRulesTitle': '게임 방법',
+      'parkingRulesObjective': '목표',
+      'parkingRulesObjectiveDesc': '올바른 순서로 차량을 탭하여 주차장의 모든 차량을 빼내세요.',
+      'parkingRulesControls': '조작 방법',
+      'parkingRulesControlsDesc': '차량을 탭하면 출발합니다. 각 차량은 화살표 방향으로 이동합니다.',
+      'parkingRulesTips': '팁',
+      'parkingRulesTipsDesc': '차량은 앞에 다른 차가 없어야만 출발할 수 있습니다. 올바른 순서를 찾아 모든 차량을 빼내세요!',
     },
     'ja': {
       // Arrow Maze strings
@@ -189,6 +217,20 @@ class AppLocalizations {
       'hintConfirmMessage': '広告を見てヒントを取得しますか？',
       'watch': '視聴',
       'cancel': 'キャンセル',
+      // Parking Jam strings
+      'parkingJam': '駐車場脱出',
+      'parkingCongratulations': 'おめでとうございます！',
+      'parkingCleared': 'すべての車が脱出しました！',
+      'parkingCars': '車: {count}台',
+      'parkingCarsLabel': '車',
+      'parkingInstruction': '車をタップすると向いている方向に出発します',
+      'parkingRulesTitle': '遊び方',
+      'parkingRulesObjective': '目標',
+      'parkingRulesObjectiveDesc': '正しい順序で車をタップして、駐車場のすべての車を出してください。',
+      'parkingRulesControls': '操作方法',
+      'parkingRulesControlsDesc': '車をタップすると出発します。各車は矢印の方向に移動します。',
+      'parkingRulesTips': 'ヒント',
+      'parkingRulesTipsDesc': '車は前に他の車がない場合のみ出発できます。正しい順序を見つけてすべての車を出してください！',
     },
     'zh': {
       // Arrow Maze strings
@@ -248,6 +290,20 @@ class AppLocalizations {
       'hintConfirmMessage': '观看广告获取提示？',
       'watch': '观看',
       'cancel': '取消',
+      // Parking Jam strings
+      'parkingJam': '停车场逃脱',
+      'parkingCongratulations': '恭喜！',
+      'parkingCleared': '所有车辆已逃脱！',
+      'parkingCars': '车辆: {count}',
+      'parkingCarsLabel': '车辆',
+      'parkingInstruction': '点击车辆，它会朝着箭头方向出发',
+      'parkingRulesTitle': '游戏方法',
+      'parkingRulesObjective': '目标',
+      'parkingRulesObjectiveDesc': '按正确的顺序点击车辆，将停车场的所有车辆移出。',
+      'parkingRulesControls': '操作方法',
+      'parkingRulesControlsDesc': '点击车辆即可出发。每辆车都会朝箭头方向移动。',
+      'parkingRulesTips': '提示',
+      'parkingRulesTipsDesc': '只有前方没有其他车辆时，车辆才能出发。找到正确的顺序，移出所有车辆！',
     },
   };
 
@@ -304,6 +360,23 @@ class AppLocalizations {
   String get hintConfirmMessage => _localizedValues[locale.languageCode]!['hintConfirmMessage']!;
   String get watch => _localizedValues[locale.languageCode]!['watch']!;
   String get cancel => _localizedValues[locale.languageCode]!['cancel']!;
+
+  // Parking Jam getters
+  String get parkingJam => _localizedValues[locale.languageCode]!['parkingJam']!;
+  String get parkingCongratulations => _localizedValues[locale.languageCode]!['parkingCongratulations']!;
+  String get parkingCleared => _localizedValues[locale.languageCode]!['parkingCleared']!;
+  String get parkingCarsLabel => _localizedValues[locale.languageCode]!['parkingCarsLabel']!;
+  String get parkingInstruction => _localizedValues[locale.languageCode]!['parkingInstruction']!;
+  String get parkingRulesTitle => _localizedValues[locale.languageCode]!['parkingRulesTitle']!;
+  String get parkingRulesObjective => _localizedValues[locale.languageCode]!['parkingRulesObjective']!;
+  String get parkingRulesObjectiveDesc => _localizedValues[locale.languageCode]!['parkingRulesObjectiveDesc']!;
+  String get parkingRulesControls => _localizedValues[locale.languageCode]!['parkingRulesControls']!;
+  String get parkingRulesControlsDesc => _localizedValues[locale.languageCode]!['parkingRulesControlsDesc']!;
+  String get parkingRulesTips => _localizedValues[locale.languageCode]!['parkingRulesTips']!;
+  String get parkingRulesTipsDesc => _localizedValues[locale.languageCode]!['parkingRulesTipsDesc']!;
+
+  String parkingCars(int count) =>
+      _localizedValues[locale.languageCode]!['parkingCars']!.replaceAll('{count}', count.toString());
 
   // Methods with parameters
   String tapArrow(int count) =>
