@@ -206,7 +206,7 @@ class CarEscapeGenerator {
       List<CarFacing> possibleFacings = [];
 
       for (var facing in CarFacing.values) {
-        if (_canExitInDirection(cell.$1, cell.$2, facing, gridSize, roadCells)) {
+        if (_canExitInDirection(cell.$1, cell.$2, facing, gridSize, roadCells, roadSegments)) {
           possibleFacings.add(facing);
         }
       }
@@ -240,7 +240,27 @@ class CarEscapeGenerator {
     return cars;
   }
 
-  static bool _canExitInDirection(int x, int y, CarFacing facing, int gridSize, Set<(int, int)> roadCells) {
+  static bool _canExitInDirection(int x, int y, CarFacing facing, int gridSize, Set<(int, int)> roadCells, List<RoadSegment> roadSegments) {
+    // First check: is there a road segment at current position that goes in this direction?
+    bool hasRoadInDirection = false;
+
+    for (var segment in roadSegments) {
+      if (!segment.containsPoint(x, y)) continue;
+
+      // Check if segment direction matches facing direction
+      if (facing.isHorizontal && segment.isHorizontal) {
+        hasRoadInDirection = true;
+        break;
+      }
+      if (facing.isVertical && segment.isVertical) {
+        hasRoadInDirection = true;
+        break;
+      }
+    }
+
+    if (!hasRoadInDirection) return false;
+
+    // Now check if there's a clear path to the edge
     int cx = x;
     int cy = y;
 
@@ -359,7 +379,7 @@ class CarEscapeGenerator {
       // Find a valid facing for this cell
       CarFacing? validFacing;
       for (var facing in CarFacing.values) {
-        if (_canExitInDirection(cell.$1, cell.$2, facing, gridSize, roadCells)) {
+        if (_canExitInDirection(cell.$1, cell.$2, facing, gridSize, roadCells, roadSegments)) {
           validFacing = facing;
           break;
         }
