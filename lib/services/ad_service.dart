@@ -8,9 +8,12 @@ class AdService {
 
   BannerAd? _bannerAd;
   bool _isBannerAdReady = false;
+  RewardedAd? _rewardedAd;
+  bool _isRewardedAdReady = false;
 
   bool get isBannerAdReady => _isBannerAdReady;
   BannerAd? get bannerAd => _bannerAd;
+  bool get isRewardedAdReady => _isRewardedAdReady;
 
   // Test Ad Unit IDs
   String get bannerAdUnitId {
@@ -18,6 +21,15 @@ class AdService {
       return 'ca-app-pub-3940256099942544/6300978111'; // Android test banner
     } else if (Platform.isIOS) {
       return 'ca-app-pub-3940256099942544/2934735716'; // iOS test banner
+    }
+    return '';
+  }
+
+  String get rewardedAdUnitId {
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-3940256099942544/5224354917'; // Android test rewarded
+    } else if (Platform.isIOS) {
+      return 'ca-app-pub-3940256099942544/1712485313'; // iOS test rewarded
     }
     return '';
   }
@@ -49,5 +61,63 @@ class AdService {
     _bannerAd?.dispose();
     _bannerAd = null;
     _isBannerAdReady = false;
+  }
+
+  void loadRewardedAd() {
+    RewardedAd.load(
+      adUnitId: rewardedAdUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          _rewardedAd = ad;
+          _isRewardedAdReady = true;
+        },
+        onAdFailedToLoad: (error) {
+          _isRewardedAdReady = false;
+          _rewardedAd = null;
+        },
+      ),
+    );
+  }
+
+  void showRewardedAd({
+    required Function() onUserEarnedReward,
+    Function()? onAdDismissed,
+    Function()? onAdFailedToShow,
+  }) {
+    if (_rewardedAd == null) {
+      onAdFailedToShow?.call();
+      loadRewardedAd();
+      return;
+    }
+
+    _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        _rewardedAd = null;
+        _isRewardedAdReady = false;
+        loadRewardedAd();
+        onAdDismissed?.call();
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        _rewardedAd = null;
+        _isRewardedAdReady = false;
+        loadRewardedAd();
+        onAdFailedToShow?.call();
+      },
+    );
+
+    _rewardedAd!.show(
+      onUserEarnedReward: (ad, reward) {
+        onUserEarnedReward();
+      },
+    );
+  }
+
+  void disposeRewardedAd() {
+    _rewardedAd?.dispose();
+    _rewardedAd = null;
+    _isRewardedAdReady = false;
   }
 }

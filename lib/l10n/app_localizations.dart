@@ -66,6 +66,7 @@ class AppLocalizations {
       'confirm': 'OK',
       'selectGame': 'Select Game',
       'arrowMaze': 'Arrow Maze',
+      'adNotReady': 'Ad not ready. Showing hint for free.',
     },
     'ko': {
       // Arrow Maze strings
@@ -120,6 +121,7 @@ class AppLocalizations {
       'confirm': '확인',
       'selectGame': '게임 선택',
       'arrowMaze': '화살표 미로',
+      'adNotReady': '광고가 준비되지 않았습니다. 무료로 힌트를 제공합니다.',
     },
     'ja': {
       // Arrow Maze strings
@@ -174,6 +176,7 @@ class AppLocalizations {
       'confirm': 'OK',
       'selectGame': 'ゲーム選択',
       'arrowMaze': '矢印迷路',
+      'adNotReady': '広告の準備ができていません。ヒントを無料で表示します。',
     },
     'zh': {
       // Arrow Maze strings
@@ -228,6 +231,7 @@ class AppLocalizations {
       'confirm': '确定',
       'selectGame': '选择游戏',
       'arrowMaze': '箭头迷宫',
+      'adNotReady': '广告未准备好。免费显示提示。',
     },
   };
 
@@ -279,6 +283,7 @@ class AppLocalizations {
   String get confirm => _localizedValues[locale.languageCode]!['confirm']!;
   String get selectGame => _localizedValues[locale.languageCode]!['selectGame']!;
   String get arrowMaze => _localizedValues[locale.languageCode]!['arrowMaze']!;
+  String get adNotReady => _localizedValues[locale.languageCode]!['adNotReady']!;
 
   // Methods with parameters
   String tapArrow(int count) =>

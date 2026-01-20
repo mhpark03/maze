@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../game/game_state.dart';
 import '../l10n/app_localizations.dart';
+import '../services/ad_service.dart';
 import '../widgets/game_board.dart';
 
 enum ArrowMazeDifficulty { easy, medium, hard }
@@ -19,12 +20,39 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
+  final AdService _adService = AdService();
+
   @override
   void initState() {
     super.initState();
+    _adService.loadRewardedAd();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<GameState>().startGame(widget.difficulty.index);
     });
+  }
+
+  @override
+  void dispose() {
+    _adService.disposeRewardedAd();
+    super.dispose();
+  }
+
+  void _showHintWithAd(GameState gameState, AppLocalizations l10n) {
+    _adService.showRewardedAd(
+      onUserEarnedReward: () {
+        gameState.showHint();
+      },
+      onAdFailedToShow: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.adNotReady),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF2D2D44),
+          ),
+        );
+        gameState.showHint();
+      },
+    );
   }
 
   @override
@@ -223,7 +251,7 @@ class _GameScreenState extends State<GameScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton.icon(
-            onPressed: () => gameState.showHint(),
+            onPressed: () => _showHintWithAd(gameState, l10n),
             icon: const Icon(Icons.lightbulb_outline),
             label: Text(l10n.hint),
             style: ElevatedButton.styleFrom(

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../l10n/app_localizations.dart';
+import '../services/ad_service.dart';
 import 'models/maze.dart';
 import 'widgets/maze_widget.dart';
 
@@ -28,6 +29,7 @@ class _MazeScreenState extends State<MazeScreen> {
   bool isGameWon = false;
   final FocusNode _focusNode = FocusNode();
   List<Position>? hintPath;
+  final AdService _adService = AdService();
 
   @override
   void initState() {
@@ -35,12 +37,14 @@ class _MazeScreenState extends State<MazeScreen> {
     difficulty = widget.difficulty;
     _initializeMaze();
     _startTimer();
+    _adService.loadRewardedAd();
   }
 
   @override
   void dispose() {
     timer?.cancel();
     _focusNode.dispose();
+    _adService.disposeRewardedAd();
     super.dispose();
   }
 
@@ -153,10 +157,28 @@ class _MazeScreenState extends State<MazeScreen> {
   void _useHint() {
     if (isGameWon) return;
 
-    setState(() {
-      hintPath = maze.findPathToEnd();
-    });
-    HapticFeedback.mediumImpact();
+    final l10n = AppLocalizations.of(context);
+    _adService.showRewardedAd(
+      onUserEarnedReward: () {
+        setState(() {
+          hintPath = maze.findPathToEnd();
+        });
+        HapticFeedback.mediumImpact();
+      },
+      onAdFailedToShow: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.adNotReady),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.grey.shade800,
+          ),
+        );
+        setState(() {
+          hintPath = maze.findPathToEnd();
+        });
+        HapticFeedback.mediumImpact();
+      },
+    );
   }
 
   String _formatTime(int seconds) {
