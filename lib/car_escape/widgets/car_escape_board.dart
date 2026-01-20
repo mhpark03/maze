@@ -56,9 +56,10 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
       vsync: this,
     );
 
-    // Calculate exit offset based on facing direction
+    // Calculate exit offset based on exit direction (after turn)
+    final exitDir = car.exitDirection;
     double endX = 0, endY = 0;
-    switch (car.facing) {
+    switch (exitDir) {
       case CarFacing.left:
         endX = -(car.gridX + 2).toDouble();
         break;
@@ -255,12 +256,12 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
                 ),
               ),
             ),
-            // Direction arrow
+            // Turn type icon
             Center(
               child: Transform.rotate(
-                angle: car.facing.rotation * pi / 180,
+                angle: car.entryDirection.rotation * pi / 180,
                 child: Icon(
-                  Icons.arrow_upward,
+                  car.turnType.icon,
                   color: Colors.white.withValues(alpha: 0.9),
                   size: carSize * 0.5,
                 ),
@@ -275,7 +276,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
       carWidget = AnimatedBuilder(
         animation: shakeAnim,
         builder: (context, child) {
-          final offset = car.facing.isHorizontal
+          final offset = car.exitDirection.isHorizontal
               ? Offset(shakeAnim.value, 0)
               : Offset(0, shakeAnim.value);
           return Transform.translate(

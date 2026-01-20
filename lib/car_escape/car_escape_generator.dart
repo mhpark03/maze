@@ -51,7 +51,7 @@ class CarEscapeGenerator {
     List<RoadSegment> roadSegments = _generateRoadSegments(gridSize, intersections);
     if (roadSegments.isEmpty) return null;
 
-    // Generate cars on road segments
+    // Generate cars on road segments with various turn types
     List<GridCar> cars = _generateCars(gridSize, roadSegments, targetCars);
     if (cars.length < 3) return null; // Need at least 3 cars
 
@@ -200,67 +200,71 @@ class CarEscapeGenerator {
       roadCells.addAll(segment.cells);
     }
 
-    // Find cells that can exit
-    Map<(int, int), List<CarFacing>> exitableCells = {};
-    for (var cell in roadCells) {
-      List<CarFacing> possibleFacings = [];
+    // Find cells with possible entry/exit combinations
+    List<_CarPlacement> possiblePlacements = [];
 
+    for (var cell in roadCells) {
+      // Get available directions at this cell
+      List<CarFacing> availableDirections = [];
       for (var facing in CarFacing.values) {
-        if (_canExitInDirection(cell.$1, cell.$2, facing, gridSize, roadCells, roadSegments)) {
-          possibleFacings.add(facing);
+        if (_hasRoadInDirection(cell.$1, cell.$2, facing, roadSegments)) {
+          availableDirections.add(facing);
         }
       }
 
-      if (possibleFacings.isNotEmpty) {
-        exitableCells[cell] = possibleFacings;
+      // For each entry direction, check what turn types are valid
+      for (var entryDir in availableDirections) {
+        for (var turnType in TurnType.values) {
+          CarFacing exitDir = turnType.getExitDirection(entryDir);
+
+          // Check if exit direction has a road
+          if (!availableDirections.contains(exitDir)) continue;
+
+          // Check if we can actually exit in that direction to the edge
+          if (_canExitToEdge(cell.$1, cell.$2, exitDir, gridSize, roadCells)) {
+            possiblePlacements.add(_CarPlacement(
+              x: cell.$1,
+              y: cell.$2,
+              entryDirection: entryDir,
+              turnType: turnType,
+            ));
+          }
+        }
       }
     }
 
-    // Place cars on exitable cells
-    List<(int, int)> cellList = exitableCells.keys.toList()..shuffle(_random);
+    // Shuffle and pick placements
+    possiblePlacements.shuffle(_random);
 
-    for (var cell in cellList) {
+    for (var placement in possiblePlacements) {
       if (carId >= targetCars) break;
-      if (occupied.contains(cell)) continue;
-
-      var facings = exitableCells[cell]!;
-      var facing = facings[_random.nextInt(facings.length)];
+      if (occupied.contains((placement.x, placement.y))) continue;
 
       cars.add(GridCar(
         id: carId,
-        gridX: cell.$1,
-        gridY: cell.$2,
-        facing: facing,
+        gridX: placement.x,
+        gridY: placement.y,
+        entryDirection: placement.entryDirection,
+        turnType: placement.turnType,
         color: shuffledColors[carId % shuffledColors.length],
       ));
-      occupied.add(cell);
+      occupied.add((placement.x, placement.y));
       carId++;
     }
 
     return cars;
   }
 
-  static bool _canExitInDirection(int x, int y, CarFacing facing, int gridSize, Set<(int, int)> roadCells, List<RoadSegment> roadSegments) {
-    // First check: is there a road segment at current position that goes in this direction?
-    bool hasRoadInDirection = false;
-
+  static bool _hasRoadInDirection(int x, int y, CarFacing direction, List<RoadSegment> roadSegments) {
     for (var segment in roadSegments) {
       if (!segment.containsPoint(x, y)) continue;
-
-      // Check if segment direction matches facing direction
-      if (facing.isHorizontal && segment.isHorizontal) {
-        hasRoadInDirection = true;
-        break;
-      }
-      if (facing.isVertical && segment.isVertical) {
-        hasRoadInDirection = true;
-        break;
-      }
+      if (direction.isHorizontal && segment.isHorizontal) return true;
+      if (direction.isVertical && segment.isVertical) return true;
     }
+    return false;
+  }
 
-    if (!hasRoadInDirection) return false;
-
-    // Now check if there's a clear path to the edge
+  static bool _canExitToEdge(int x, int y, CarFacing facing, int gridSize, Set<(int, int)> roadCells) {
     int cx = x;
     int cy = y;
 
@@ -369,32 +373,49 @@ class CarEscapeGenerator {
     int carId = 0;
     Set<(int, int)> occupied = {};
 
-    // Place cars that can definitely exit
+    // Place cars with various turn types
     List<(int, int)> cellList = roadCells.toList()..shuffle(_random);
 
     for (var cell in cellList) {
       if (cars.length >= intersectionCount * 2) break;
       if (occupied.contains(cell)) continue;
 
-      // Find a valid facing for this cell
-      CarFacing? validFacing;
+      // Get available directions
+      List<CarFacing> availableDirs = [];
       for (var facing in CarFacing.values) {
-        if (_canExitInDirection(cell.$1, cell.$2, facing, gridSize, roadCells, roadSegments)) {
-          validFacing = facing;
-          break;
+        if (_hasRoadInDirection(cell.$1, cell.$2, facing, roadSegments)) {
+          availableDirs.add(facing);
         }
       }
 
-      if (validFacing != null) {
-        cars.add(GridCar(
-          id: carId,
-          gridX: cell.$1,
-          gridY: cell.$2,
-          facing: validFacing,
-          color: shuffledColors[carId % shuffledColors.length],
-        ));
-        occupied.add(cell);
-        carId++;
+      if (availableDirs.isEmpty) continue;
+
+      // Try to find a valid entry/turn combination
+      List<TurnType> turnTypes = List.from(TurnType.values)..shuffle(_random);
+      List<CarFacing> entryDirs = List.from(availableDirs)..shuffle(_random);
+
+      bool placed = false;
+      for (var entryDir in entryDirs) {
+        if (placed) break;
+        for (var turnType in turnTypes) {
+          CarFacing exitDir = turnType.getExitDirection(entryDir);
+
+          if (!availableDirs.contains(exitDir)) continue;
+          if (!_canExitToEdge(cell.$1, cell.$2, exitDir, gridSize, roadCells)) continue;
+
+          cars.add(GridCar(
+            id: carId,
+            gridX: cell.$1,
+            gridY: cell.$2,
+            entryDirection: entryDir,
+            turnType: turnType,
+            color: shuffledColors[carId % shuffledColors.length],
+          ));
+          occupied.add(cell);
+          carId++;
+          placed = true;
+          break;
+        }
       }
     }
 
@@ -405,4 +426,17 @@ class CarEscapeGenerator {
       cars: cars,
     );
   }
+}
+
+class _CarPlacement {
+  final int x, y;
+  final CarFacing entryDirection;
+  final TurnType turnType;
+
+  _CarPlacement({
+    required this.x,
+    required this.y,
+    required this.entryDirection,
+    required this.turnType,
+  });
 }
