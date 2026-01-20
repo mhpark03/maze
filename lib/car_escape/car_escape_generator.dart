@@ -204,12 +204,19 @@ class CarEscapeGenerator {
     List<_CarPlacement> possiblePlacements = [];
 
     for (var cell in roadCells) {
-      // Get available directions at this cell
+      // Check which road types exist at this cell
+      bool hasHorizontalRoad = _hasRoadOfType(cell.$1, cell.$2, true, roadSegments);
+      bool hasVerticalRoad = _hasRoadOfType(cell.$1, cell.$2, false, roadSegments);
+
+      // Get available directions based on actual road segments
       List<CarFacing> availableDirections = [];
-      for (var facing in CarFacing.values) {
-        if (_hasRoadInDirection(cell.$1, cell.$2, facing, roadSegments)) {
-          availableDirections.add(facing);
-        }
+      if (hasHorizontalRoad) {
+        availableDirections.add(CarFacing.left);
+        availableDirections.add(CarFacing.right);
+      }
+      if (hasVerticalRoad) {
+        availableDirections.add(CarFacing.up);
+        availableDirections.add(CarFacing.down);
       }
 
       // For each entry direction, check what turn types are valid
@@ -217,8 +224,13 @@ class CarEscapeGenerator {
         for (var turnType in TurnType.values) {
           CarFacing exitDir = turnType.getExitDirection(entryDir);
 
-          // Check if exit direction has a road
+          // Check if exit direction has a road at this position
           if (!availableDirections.contains(exitDir)) continue;
+
+          // For turns (not straight/U-turn), we need BOTH horizontal and vertical roads
+          if (turnType == TurnType.leftTurn || turnType == TurnType.rightTurn) {
+            if (!hasHorizontalRoad || !hasVerticalRoad) continue;
+          }
 
           // Check if we can actually exit in that direction to the edge
           if (_canExitToEdge(cell.$1, cell.$2, exitDir, gridSize, roadCells)) {
@@ -255,11 +267,11 @@ class CarEscapeGenerator {
     return cars;
   }
 
-  static bool _hasRoadInDirection(int x, int y, CarFacing direction, List<RoadSegment> roadSegments) {
+  static bool _hasRoadOfType(int x, int y, bool horizontal, List<RoadSegment> roadSegments) {
     for (var segment in roadSegments) {
       if (!segment.containsPoint(x, y)) continue;
-      if (direction.isHorizontal && segment.isHorizontal) return true;
-      if (direction.isVertical && segment.isVertical) return true;
+      if (horizontal && segment.isHorizontal) return true;
+      if (!horizontal && segment.isVertical) return true;
     }
     return false;
   }
@@ -380,12 +392,19 @@ class CarEscapeGenerator {
       if (cars.length >= intersectionCount * 2) break;
       if (occupied.contains(cell)) continue;
 
-      // Get available directions
+      // Check which road types exist at this cell
+      bool hasHorizontalRoad = _hasRoadOfType(cell.$1, cell.$2, true, roadSegments);
+      bool hasVerticalRoad = _hasRoadOfType(cell.$1, cell.$2, false, roadSegments);
+
+      // Get available directions based on actual road segments
       List<CarFacing> availableDirs = [];
-      for (var facing in CarFacing.values) {
-        if (_hasRoadInDirection(cell.$1, cell.$2, facing, roadSegments)) {
-          availableDirs.add(facing);
-        }
+      if (hasHorizontalRoad) {
+        availableDirs.add(CarFacing.left);
+        availableDirs.add(CarFacing.right);
+      }
+      if (hasVerticalRoad) {
+        availableDirs.add(CarFacing.up);
+        availableDirs.add(CarFacing.down);
       }
 
       if (availableDirs.isEmpty) continue;
@@ -401,6 +420,12 @@ class CarEscapeGenerator {
           CarFacing exitDir = turnType.getExitDirection(entryDir);
 
           if (!availableDirs.contains(exitDir)) continue;
+
+          // For turns, we need BOTH horizontal and vertical roads
+          if (turnType == TurnType.leftTurn || turnType == TurnType.rightTurn) {
+            if (!hasHorizontalRoad || !hasVerticalRoad) continue;
+          }
+
           if (!_canExitToEdge(cell.$1, cell.$2, exitDir, gridSize, roadCells)) continue;
 
           cars.add(GridCar(
