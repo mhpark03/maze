@@ -1,13 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import '../game/game_state.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/locale_provider.dart';
+import '../services/ad_service.dart';
 import 'game_screen.dart';
 import '../maze/maze_screen.dart';
 
-class GameSelectionScreen extends StatelessWidget {
+class GameSelectionScreen extends StatefulWidget {
   const GameSelectionScreen({super.key});
+
+  @override
+  State<GameSelectionScreen> createState() => _GameSelectionScreenState();
+}
+
+class _GameSelectionScreenState extends State<GameSelectionScreen> {
+  final AdService _adService = AdService();
+
+  @override
+  void initState() {
+    super.initState();
+    _adService.loadBannerAd(onAdLoaded: () {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _adService.disposeBannerAd();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,28 +53,41 @@ class GameSelectionScreen extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildGameCard(
-                context: context,
-                title: l10n.arrowMaze,
-                icon: Icons.arrow_forward,
-                color: const Color(0xFF4ECDC4),
-                onTap: () => _showArrowMazeDifficultyDialog(context, l10n),
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildGameCard(
+                      context: context,
+                      title: l10n.arrowMaze,
+                      icon: Icons.arrow_forward,
+                      color: const Color(0xFF4ECDC4),
+                      onTap: () => _showArrowMazeDifficultyDialog(context, l10n),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildGameCard(
+                      context: context,
+                      title: l10n.maze,
+                      icon: Icons.grid_4x4,
+                      color: Colors.purple,
+                      onTap: () => _showMazeDifficultyDialog(context, l10n),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              _buildGameCard(
-                context: context,
-                title: l10n.maze,
-                icon: Icons.grid_4x4,
-                color: Colors.purple,
-                onTap: () => _showMazeDifficultyDialog(context, l10n),
+            ),
+            if (_adService.isBannerAdReady && _adService.bannerAd != null)
+              Container(
+                color: const Color(0xFF1A1A2E),
+                width: _adService.bannerAd!.size.width.toDouble(),
+                height: _adService.bannerAd!.size.height.toDouble(),
+                child: AdWidget(ad: _adService.bannerAd!),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );

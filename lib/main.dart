@@ -6,9 +6,11 @@ import 'game/game_state.dart';
 import 'l10n/app_localizations.dart';
 import 'l10n/locale_provider.dart';
 import 'screens/game_selection_screen.dart';
+import 'services/ad_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AdService().initialize();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
