@@ -80,6 +80,11 @@ class _GameScreenState extends State<GameScreen> {
             tooltip: l10n.howToPlay,
           ),
           IconButton(
+            icon: const Icon(Icons.lightbulb_outline),
+            onPressed: () => _showHintWithAd(context.read<GameState>(), l10n),
+            tooltip: l10n.hint,
+          ),
+          IconButton(
             icon: const Icon(Icons.replay),
             onPressed: () => context.read<GameState>().resetLevel(),
             tooltip: l10n.newGame,
@@ -96,7 +101,6 @@ class _GameScreenState extends State<GameScreen> {
                     _buildInfoPanel(gameState, l10n),
                     _buildInstructions(gameState, l10n),
                     const Expanded(child: GameBoard()),
-                    _buildControls(gameState, l10n),
                   ],
                 ),
                 if (gameState.isLoading) _buildLoadingOverlay(l10n),
@@ -225,53 +229,6 @@ class _GameScreenState extends State<GameScreen> {
           fontWeight: FontWeight.w500,
         ),
         textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildControls(GameState gameState, AppLocalizations l10n) {
-    // Show SnackBar when no hint is available
-    if (gameState.noHintAvailable) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.noHint),
-              duration: const Duration(seconds: 2),
-              backgroundColor: const Color(0xFF2D2D44),
-            ),
-          );
-        }
-      });
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton.icon(
-            onPressed: () => _showHintWithAd(gameState, l10n),
-            icon: const Icon(Icons.lightbulb_outline),
-            label: Text(l10n.hint),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFD93D),
-              foregroundColor: Colors.black87,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-          ),
-          const SizedBox(width: 16),
-          ElevatedButton.icon(
-            onPressed: gameState.isAnimating ? null : () => gameState.resetLevel(),
-            icon: const Icon(Icons.refresh),
-            label: Text(l10n.restart),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2D2D44),
-              foregroundColor: Colors.white70,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-          ),
-        ],
       ),
     );
   }
