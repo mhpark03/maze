@@ -486,79 +486,98 @@ class CarEscapeGenerator {
     return testPuzzle.isComplete;
   }
 
-  // Generate a simple puzzle that is guaranteed to be solvable
+  // Generate a more interesting puzzle that is guaranteed to be solvable
   static CarJamPuzzle _generateSimpleSolvablePuzzle(int gridSize) {
-    // Create a simple cross intersection in the center
-    int centerX = gridSize ~/ 2;
-    int centerY = gridSize ~/ 2;
+    // Create a grid of intersections (2x2 or 3x3 based on grid size)
+    int divisions = gridSize >= 8 ? 3 : 2;
+    double spacing = (gridSize - 2) / (divisions + 1);
 
-    List<Intersection> intersections = [Intersection(centerX, centerY)];
+    List<Intersection> intersections = [];
+    for (int i = 1; i <= divisions; i++) {
+      for (int j = 1; j <= divisions; j++) {
+        int x = (1 + spacing * i).round().clamp(1, gridSize - 2);
+        int y = (1 + spacing * j).round().clamp(1, gridSize - 2);
+        // Avoid duplicates
+        if (!intersections.any((int_) => int_.x == x && int_.y == y)) {
+          intersections.add(Intersection(x, y));
+        }
+      }
+    }
 
-    // Create horizontal and vertical roads through center
-    List<RoadSegment> roadSegments = [
-      RoadSegment(x1: 0, y1: centerY, x2: gridSize - 1, y2: centerY),
-      RoadSegment(x1: centerX, y1: 0, x2: centerX, y2: gridSize - 1),
-    ];
+    // Create roads through each intersection row and column
+    List<RoadSegment> roadSegments = [];
+    Set<int> usedRows = {};
+    Set<int> usedCols = {};
+
+    for (var intersection in intersections) {
+      if (!usedRows.contains(intersection.y)) {
+        roadSegments.add(RoadSegment(
+          x1: 0, y1: intersection.y,
+          x2: gridSize - 1, y2: intersection.y,
+        ));
+        usedRows.add(intersection.y);
+      }
+      if (!usedCols.contains(intersection.x)) {
+        roadSegments.add(RoadSegment(
+          x1: intersection.x, y1: 0,
+          x2: intersection.x, y2: gridSize - 1,
+        ));
+        usedCols.add(intersection.x);
+      }
+    }
 
     List<Color> shuffledColors = List.from(_carColors)..shuffle(_random);
     List<CarEscapeColor> shuffledVehicleColors = List.from(_vehicleColors)..shuffle(_random);
 
-    // Place cars that can definitely exit (no blocking)
+    // Place cars on edges of roads (guaranteed to exit without blocking)
     List<GridCar> cars = [];
     int carId = 0;
 
-    // Place cars on horizontal road (going left or right to exit)
-    // Left side - going left (can exit immediately)
-    if (centerX > 2) {
-      cars.add(GridCar(
-        id: carId++,
-        gridX: 1,
-        gridY: centerY,
-        travelDirection: CarFacing.left,
-        turnType: TurnType.straight,
-        color: shuffledColors[carId % shuffledColors.length],
-        vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
-      ));
-    }
-
-    // Right side - going right (can exit immediately)
-    if (centerX < gridSize - 3) {
-      cars.add(GridCar(
-        id: carId++,
-        gridX: gridSize - 2,
-        gridY: centerY,
-        travelDirection: CarFacing.right,
-        turnType: TurnType.straight,
-        color: shuffledColors[carId % shuffledColors.length],
-        vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
-      ));
-    }
-
-    // Place cars on vertical road
-    // Top - going up (can exit immediately)
-    if (centerY > 2) {
-      cars.add(GridCar(
-        id: carId++,
-        gridX: centerX,
-        gridY: 1,
-        travelDirection: CarFacing.up,
-        turnType: TurnType.straight,
-        color: shuffledColors[carId % shuffledColors.length],
-        vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
-      ));
-    }
-
-    // Bottom - going down (can exit immediately)
-    if (centerY < gridSize - 3) {
-      cars.add(GridCar(
-        id: carId++,
-        gridX: centerX,
-        gridY: gridSize - 2,
-        travelDirection: CarFacing.down,
-        turnType: TurnType.straight,
-        color: shuffledColors[carId % shuffledColors.length],
-        vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
-      ));
+    // Place cars at the edges of each road segment
+    for (var segment in roadSegments) {
+      if (segment.isHorizontal) {
+        // Left edge car going left
+        cars.add(GridCar(
+          id: carId++,
+          gridX: 1,
+          gridY: segment.y1,
+          travelDirection: CarFacing.left,
+          turnType: TurnType.straight,
+          color: shuffledColors[carId % shuffledColors.length],
+          vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
+        ));
+        // Right edge car going right
+        cars.add(GridCar(
+          id: carId++,
+          gridX: gridSize - 2,
+          gridY: segment.y1,
+          travelDirection: CarFacing.right,
+          turnType: TurnType.straight,
+          color: shuffledColors[carId % shuffledColors.length],
+          vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
+        ));
+      } else if (segment.isVertical) {
+        // Top edge car going up
+        cars.add(GridCar(
+          id: carId++,
+          gridX: segment.x1,
+          gridY: 1,
+          travelDirection: CarFacing.up,
+          turnType: TurnType.straight,
+          color: shuffledColors[carId % shuffledColors.length],
+          vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
+        ));
+        // Bottom edge car going down
+        cars.add(GridCar(
+          id: carId++,
+          gridX: segment.x1,
+          gridY: gridSize - 2,
+          travelDirection: CarFacing.down,
+          turnType: TurnType.straight,
+          color: shuffledColors[carId % shuffledColors.length],
+          vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
+        ));
+      }
     }
 
     return CarJamPuzzle(

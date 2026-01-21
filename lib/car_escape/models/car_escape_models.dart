@@ -36,20 +36,20 @@ extension CarEscapeDifficultyExtension on CarEscapeDifficulty {
       case CarEscapeDifficulty.easy:
         return 4;
       case CarEscapeDifficulty.medium:
-        return 12;
+        return 6;
       case CarEscapeDifficulty.hard:
-        return 24;
+        return 9;
     }
   }
 
   (int, int) get carCountRange {
     switch (this) {
       case CarEscapeDifficulty.easy:
-        return (8, 12);
+        return (6, 10);
       case CarEscapeDifficulty.medium:
-        return (20, 28);
+        return (12, 18);
       case CarEscapeDifficulty.hard:
-        return (40, 60);
+        return (20, 30);
     }
   }
 }
