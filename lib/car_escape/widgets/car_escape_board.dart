@@ -25,8 +25,9 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
   final Map<int, AnimationController> _exitControllers = {};
   final Map<int, List<Offset>> _exitPaths = {}; // Store the path for each car
   final Map<int, List<CarFacing>> _exitDirections = {}; // Store direction at each path point
-  final Map<int, AnimationController> _shakeControllers = {};
-  final Map<int, Animation<double>> _shakeAnimations = {};
+  final Map<int, AnimationController> _collisionControllers = {};
+  final Map<int, List<Offset>> _collisionPaths = {}; // Path to collision point
+  final Map<int, List<CarFacing>> _collisionDirections = {}; // Direction during collision
   int? _highlightedBlockingCarId;
   double _cellSize = 50; // Default cell size, updated in build
 
@@ -35,7 +36,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
     for (var controller in _exitControllers.values) {
       controller.dispose();
     }
-    for (var controller in _shakeControllers.values) {
+    for (var controller in _collisionControllers.values) {
       controller.dispose();
     }
     super.dispose();
@@ -43,12 +44,13 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
 
   void _onCarTap(GridCar car) {
     if (_exitControllers.containsKey(car.id)) return;
+    if (_collisionControllers.containsKey(car.id)) return;
     if (car.hasExited || car.isExiting) return;
 
     if (widget.puzzle.canCarExit(car)) {
       _startExitAnimation(car);
     } else {
-      _startShakeAnimation(car);
+      _startCollisionAnimation(car);
     }
   }
 
@@ -187,60 +189,152 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
     }
   }
 
-  void _startShakeAnimation(GridCar car) {
-    if (_shakeControllers.containsKey(car.id)) {
-      _shakeControllers[car.id]?.reset();
-      _shakeControllers[car.id]?.forward();
+  void _startCollisionAnimation(GridCar car) {
+    if (_collisionControllers.containsKey(car.id)) {
       return;
     }
 
     final blockingCar = widget.puzzle.getBlockingCar(car);
+
+    // Build path to collision point
+    final gridPath = widget.puzzle.getFullPath(car);
+    List<Offset> pathOffsets = [Offset.zero];
+    List<CarFacing> pathDirections = [car.travelDirection];
+
+    CarFacing currentDirection = car.travelDirection;
+    int turnsNeeded = car.turnType.isUTurn ? 2 : 1;
+    int turnsMade = 0;
+
+    // Find collision point in the path
+    int collisionIndex = -1;
+    if (blockingCar != null) {
+      for (int i = 0; i < gridPath.length; i++) {
+        if (gridPath[i].$1 == blockingCar.gridX && gridPath[i].$2 == blockingCar.gridY) {
+          collisionIndex = i;
+          break;
+        }
+      }
+    }
+
+    // Build path up to one cell before collision (or full path if no collision found)
+    int pathLength = collisionIndex > 0 ? collisionIndex : (gridPath.isEmpty ? 0 : min(gridPath.length, 3));
+
+    for (int i = 0; i < pathLength; i++) {
+      var cell = gridPath[i];
+
+      // Check for direction change at intersection
+      if (turnsMade < turnsNeeded && widget.puzzle.isIntersection(cell.$1, cell.$2)) {
+        CarFacing newDir;
+        if (car.turnType.isUTurn) {
+          if (car.turnType == TurnType.uTurnLeft) {
+            newDir = currentDirection.turnLeft;
+          } else {
+            newDir = currentDirection.turnRight;
+          }
+        } else {
+          newDir = car.turnType.getFirstTurnDirection(currentDirection);
+        }
+
+        if (widget.puzzle.hasRoadInDirection(cell.$1, cell.$2, newDir)) {
+          currentDirection = newDir;
+          turnsMade++;
+        }
+      }
+
+      pathOffsets.add(Offset(
+        (cell.$1 - car.gridX).toDouble(),
+        (cell.$2 - car.gridY).toDouble(),
+      ));
+      pathDirections.add(currentDirection);
+    }
+
+    // If no path, just do a small forward movement
+    if (pathOffsets.length == 1) {
+      pathOffsets.add(Offset(
+        car.travelDirection.dx * 0.3,
+        car.travelDirection.dy * 0.3,
+      ));
+      pathDirections.add(car.travelDirection);
+    }
+
+    _collisionPaths[car.id] = pathOffsets;
+    _collisionDirections[car.id] = pathDirections;
+
+    // Highlight blocking car
     if (blockingCar != null) {
       setState(() {
         _highlightedBlockingCarId = blockingCar.id;
       });
-      Future.delayed(const Duration(milliseconds: 600), () {
+    }
+
+    // Animation duration based on path length
+    final duration = Duration(milliseconds: 150 * pathOffsets.length + 300); // extra for shake
+
+    final controller = AnimationController(
+      duration: duration,
+      vsync: this,
+    );
+
+    _collisionControllers[car.id] = controller;
+
+    controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _collisionControllers.remove(car.id)?.dispose();
+        _collisionPaths.remove(car.id);
+        _collisionDirections.remove(car.id);
         if (mounted) {
           setState(() {
             _highlightedBlockingCarId = null;
           });
         }
-      });
-    }
-
-    final controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-
-    // Scale shake amount based on cell size
-    final shakeAmount = _cellSize * 0.12;
-    final smallShake = _cellSize * 0.08;
-
-    final animation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0, end: shakeAmount), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: shakeAmount, end: -shakeAmount), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -shakeAmount, end: smallShake), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: smallShake, end: -smallShake), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -smallShake, end: 0), weight: 1),
-    ]).animate(CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeInOut,
-    ));
-
-    _shakeControllers[car.id] = controller;
-    _shakeAnimations[car.id] = animation;
-
-    controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _shakeControllers.remove(car.id)?.dispose();
-        _shakeAnimations.remove(car.id);
-        if (mounted) setState(() {});
       }
     });
 
     controller.forward();
     setState(() {});
+  }
+
+  // Get collision animation position: forward (0-0.4), shake (0.4-0.6), return (0.6-1.0)
+  Offset _getCollisionPosition(List<Offset> path, double t, CarFacing direction) {
+    if (path.isEmpty) return Offset.zero;
+
+    if (t < 0.4) {
+      // Phase 1: Move forward
+      double forwardT = t / 0.4;
+      return _getPathPosition(path, forwardT);
+    } else if (t < 0.6) {
+      // Phase 2: Shake at collision point
+      double shakeT = (t - 0.4) / 0.2;
+      final basePos = path.last;
+      final shakeAmount = _cellSize * 0.08 / _cellSize; // Normalized shake
+      double shakeOffset = sin(shakeT * pi * 4) * shakeAmount * (1 - shakeT);
+
+      if (direction.isHorizontal) {
+        return Offset(basePos.dx + shakeOffset, basePos.dy);
+      } else {
+        return Offset(basePos.dx, basePos.dy + shakeOffset);
+      }
+    } else {
+      // Phase 3: Return to start
+      double returnT = (t - 0.6) / 0.4;
+      final endPos = _getPathPosition(path, 1.0 - returnT);
+      return endPos;
+    }
+  }
+
+  // Get collision animation direction
+  CarFacing _getCollisionDirection(List<CarFacing> directions, double t) {
+    if (directions.isEmpty) return CarFacing.up;
+
+    if (t < 0.4) {
+      double forwardT = t / 0.4;
+      return _getPathDirection(directions, forwardT);
+    } else if (t < 0.6) {
+      return directions.last;
+    } else {
+      double returnT = (t - 0.6) / 0.4;
+      return _getPathDirection(directions, 1.0 - returnT);
+    }
   }
 
   @override
@@ -298,7 +392,9 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
 
     final exitPath = _exitPaths[car.id];
     final exitController = _exitControllers[car.id];
-    final shakeAnim = _shakeAnimations[car.id];
+    final collisionPath = _collisionPaths[car.id];
+    final collisionController = _collisionControllers[car.id];
+    final collisionDirections = _collisionDirections[car.id];
     final isHighlighted = _highlightedBlockingCarId == car.id;
     final isHintCar = widget.hintCarId == car.id;
 
@@ -381,19 +477,77 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
       ),
     );
 
-    if (shakeAnim != null) {
-      carWidget = AnimatedBuilder(
-        animation: shakeAnim,
+    // Collision animation: move to blocking car, shake, return
+    if (collisionPath != null && collisionController != null) {
+      return AnimatedBuilder(
+        animation: collisionController,
         builder: (context, child) {
-          final offset = car.exitDirection.isHorizontal
-              ? Offset(shakeAnim.value, 0)
-              : Offset(0, shakeAnim.value);
-          return Transform.translate(
-            offset: offset,
-            child: child,
+          final t = collisionController.value;
+          final offset = _getCollisionPosition(collisionPath, t, car.travelDirection);
+
+          // Get current direction for rotation
+          CarFacing currentFacing = car.travelDirection;
+          if (collisionDirections != null) {
+            currentFacing = _getCollisionDirection(collisionDirections, t);
+          }
+          int dynamicQuarterTurns = _facingToQuarterTurns(currentFacing);
+
+          // Build car widget with dynamic rotation
+          Widget animatedCarWidget = GestureDetector(
+            onTap: () => _onCarTap(car),
+            child: SizedBox(
+              width: carSize,
+              height: carSize,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: RotatedBox(
+                      quarterTurns: dynamicQuarterTurns,
+                      child: Image.asset(
+                        car.imagePath,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  if (isHighlighted || isHintCar)
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(cellSize * 0.15),
+                        border: Border.all(
+                          color: isHintCar ? Colors.yellow : Colors.white,
+                          width: cellSize * 0.06,
+                        ),
+                      ),
+                    ),
+                  Positioned.fill(
+                    child: Center(
+                      child: Transform.rotate(
+                        angle: currentFacing.rotation * pi / 180,
+                        child: Icon(
+                          car.turnType.icon,
+                          color: Colors.white,
+                          size: carSize * 0.5,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.8),
+                              blurRadius: cellSize * 0.08,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+
+          return Positioned(
+            left: left + offset.dx * cellSize,
+            top: top + offset.dy * cellSize,
+            child: animatedCarWidget,
           );
         },
-        child: carWidget,
       );
     }
 
