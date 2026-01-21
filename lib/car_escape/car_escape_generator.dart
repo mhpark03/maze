@@ -566,10 +566,40 @@ class CarEscapeGenerator {
 
           if (intersectionInfo != null) {
             var (intX, intY) = intersectionInfo;
-            CarFacing exitDir = turnType.getExitDirection(travelDir);
 
-            if (!_hasRoadInDirection(intX, intY, exitDir, roadSegments)) continue;
-            if (!_canReachEdge(intX, intY, exitDir, gridSize, roadSegments)) continue;
+            // U-turns require special validation - need two intersections
+            if (turnType.isUTurn) {
+              // First turn direction at first intersection
+              CarFacing firstTurnDir = turnType == TurnType.uTurnLeft
+                  ? travelDir.turnLeft
+                  : travelDir.turnRight;
+
+              // Check if there's a road in the first turn direction
+              if (!_hasRoadInDirection(intX, intY, firstTurnDir, roadSegments)) continue;
+
+              // Find second intersection after first turn
+              var secondIntersection = _findNextIntersection(
+                  intX, intY, firstTurnDir, gridSize, roadSegments, intersectionSet);
+
+              if (secondIntersection == null) continue;
+
+              var (int2X, int2Y) = secondIntersection;
+
+              // Second turn direction (same as first: left or right)
+              CarFacing secondTurnDir = turnType == TurnType.uTurnLeft
+                  ? firstTurnDir.turnLeft
+                  : firstTurnDir.turnRight;
+
+              // Check if we can make second turn and reach edge
+              if (!_hasRoadInDirection(int2X, int2Y, secondTurnDir, roadSegments)) continue;
+              if (!_canReachEdge(int2X, int2Y, secondTurnDir, gridSize, roadSegments)) continue;
+            } else {
+              // Regular turns (straight, left, right)
+              CarFacing exitDir = turnType.getExitDirection(travelDir);
+
+              if (!_hasRoadInDirection(intX, intY, exitDir, roadSegments)) continue;
+              if (!_canReachEdge(intX, intY, exitDir, gridSize, roadSegments)) continue;
+            }
           } else {
             if (turnType != TurnType.straight) continue;
             if (!_canReachEdge(cell.$1, cell.$2, travelDir, gridSize, roadSegments)) continue;
