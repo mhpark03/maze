@@ -98,9 +98,26 @@ extension CarFacingExtension on CarFacing {
   }
 }
 
-enum TurnType { straight, leftTurn, rightTurn, uTurn }
+enum TurnType { straight, leftTurn, rightTurn, uTurnLeft, uTurnRight }
 
 extension TurnTypeExtension on TurnType {
+  // Get the first turn direction (for U-turns, this is the first of two turns)
+  CarFacing getFirstTurnDirection(CarFacing travelDirection) {
+    switch (this) {
+      case TurnType.straight:
+        return travelDirection;
+      case TurnType.leftTurn:
+        return travelDirection.turnLeft;
+      case TurnType.rightTurn:
+        return travelDirection.turnRight;
+      case TurnType.uTurnLeft:
+        return travelDirection.turnLeft;
+      case TurnType.uTurnRight:
+        return travelDirection.turnRight;
+    }
+  }
+
+  // Get the final exit direction (after all turns)
   CarFacing getExitDirection(CarFacing travelDirection) {
     switch (this) {
       case TurnType.straight:
@@ -109,10 +126,16 @@ extension TurnTypeExtension on TurnType {
         return travelDirection.turnLeft;
       case TurnType.rightTurn:
         return travelDirection.turnRight;
-      case TurnType.uTurn:
+      case TurnType.uTurnLeft:
+        // Left then left = opposite direction
+        return travelDirection.opposite;
+      case TurnType.uTurnRight:
+        // Right then right = opposite direction
         return travelDirection.opposite;
     }
   }
+
+  bool get isUTurn => this == TurnType.uTurnLeft || this == TurnType.uTurnRight;
 
   IconData get icon {
     switch (this) {
@@ -122,8 +145,10 @@ extension TurnTypeExtension on TurnType {
         return Icons.turn_left;
       case TurnType.rightTurn:
         return Icons.turn_right;
-      case TurnType.uTurn:
+      case TurnType.uTurnLeft:
         return Icons.u_turn_left;
+      case TurnType.uTurnRight:
+        return Icons.u_turn_right;
     }
   }
 }
@@ -275,20 +300,26 @@ class CarJamPuzzle {
     return false;
   }
 
-  // Get the full path: car position -> intersection -> turn -> exit
+  // Get the full path: car position -> intersection(s) -> turn(s) -> exit
   List<(int, int)> getFullPath(GridCar car) {
     List<(int, int)> path = [];
     int x = car.gridX;
     int y = car.gridY;
     CarFacing currentDir = car.travelDirection;
-    bool turnMade = false;
 
-    // Phase 1: Travel to intersection (or edge)
-    while (true) {
+    // For U-turns, we need to make two turns at two different intersections
+    // For other turns, we make one turn at one intersection
+    int turnsNeeded = car.turnType.isUTurn ? 2 : 1;
+    int turnsMade = 0;
+
+    int maxSteps = gridSize * 4; // Safety limit
+    int steps = 0;
+
+    while (steps < maxSteps) {
       int nextX = x + currentDir.dx;
       int nextY = y + currentDir.dy;
 
-      // Reached edge before intersection
+      // Reached edge - exit point
       if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize) {
         break;
       }
@@ -301,18 +332,32 @@ class CarJamPuzzle {
       path.add((nextX, nextY));
       x = nextX;
       y = nextY;
+      steps++;
 
-      // Check if we reached an intersection and haven't turned yet
-      if (!turnMade && isIntersection(x, y)) {
-        // Apply turn
-        CarFacing newDir = car.turnType.getExitDirection(currentDir);
+      // Check if we reached an intersection
+      if (turnsMade < turnsNeeded && isIntersection(x, y)) {
+        CarFacing newDir;
+
+        if (car.turnType.isUTurn) {
+          // For U-turn: first turn is left/right, second turn is same direction
+          if (car.turnType == TurnType.uTurnLeft) {
+            newDir = currentDir.turnLeft;
+          } else {
+            newDir = currentDir.turnRight;
+          }
+        } else {
+          // For regular turns: apply the turn type
+          newDir = car.turnType.getFirstTurnDirection(currentDir);
+        }
 
         // Check if we can turn (there's a road in that direction)
         if (hasRoadInDirection(x, y, newDir)) {
           currentDir = newDir;
-          turnMade = true;
+          turnsMade++;
+        } else {
+          // Can't make the required turn - path ends here (car can't exit)
+          break;
         }
-        // If can't turn, continue straight (or stop if no road)
       }
     }
 
@@ -339,6 +384,11 @@ class CarJamPuzzle {
       return false;
     }
 
+    // Verify path actually reaches the edge
+    if (!_pathReachesEdge(car, path)) {
+      return false;
+    }
+
     // Check if path is clear (excluding self)
     for (var cell in path) {
       if (occupied.contains(cell)) {
@@ -347,6 +397,20 @@ class CarJamPuzzle {
     }
 
     return true;
+  }
+
+  // Check if the path's last cell is adjacent to the grid edge
+  bool _pathReachesEdge(GridCar car, List<(int, int)> path) {
+    if (path.isEmpty) return false;
+
+    final lastCell = path.last;
+    final exitDir = car.turnType.getExitDirection(car.travelDirection);
+
+    // Check if moving one more step from last cell would exit the grid
+    int nextX = lastCell.$1 + exitDir.dx;
+    int nextY = lastCell.$2 + exitDir.dy;
+
+    return nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize;
   }
 
   GridCar? getBlockingCar(GridCar car) {

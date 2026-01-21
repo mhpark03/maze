@@ -209,6 +209,9 @@ class CarEscapeGenerator {
 
           // Check what turns are possible at this intersection
           for (var turnType in TurnType.values) {
+            // Skip U-turns here - they're handled separately below
+            if (turnType.isUTurn) continue;
+
             CarFacing exitDir = turnType.getExitDirection(travelDir);
 
             // Check if there's a road in the exit direction at the intersection
@@ -223,6 +226,45 @@ class CarEscapeGenerator {
                     travelDirection: travelDir,
                     turnType: turnType,
                   ));
+                }
+              }
+            }
+          }
+
+          // Handle U-turns separately - they require two intersections
+          for (var uTurnType in [TurnType.uTurnLeft, TurnType.uTurnRight]) {
+            // First turn direction at first intersection
+            CarFacing firstTurnDir = uTurnType == TurnType.uTurnLeft
+                ? travelDir.turnLeft
+                : travelDir.turnRight;
+
+            // Check if there's a road in the first turn direction
+            if (_hasRoadInDirection(intX, intY, firstTurnDir, roadSegments)) {
+              // Find second intersection after first turn
+              var secondIntersection = _findNextIntersection(
+                  intX, intY, firstTurnDir, gridSize, roadSegments, intersectionSet);
+
+              if (secondIntersection != null) {
+                var (int2X, int2Y) = secondIntersection;
+
+                // Second turn direction (same as first: left or right)
+                CarFacing secondTurnDir = uTurnType == TurnType.uTurnLeft
+                    ? firstTurnDir.turnLeft
+                    : firstTurnDir.turnRight;
+
+                // Check if we can make second turn and reach edge
+                if (_hasRoadInDirection(int2X, int2Y, secondTurnDir, roadSegments)) {
+                  if (_canReachEdge(int2X, int2Y, secondTurnDir, gridSize, roadSegments)) {
+                    // Full path validation
+                    if (_validateFullPath(cell.$1, cell.$2, travelDir, uTurnType, gridSize, roadSegments, intersectionSet)) {
+                      possiblePlacements.add(_CarPlacement(
+                        x: cell.$1,
+                        y: cell.$2,
+                        travelDirection: travelDir,
+                        turnType: uTurnType,
+                      ));
+                    }
+                  }
                 }
               }
             }
@@ -336,22 +378,26 @@ class CarEscapeGenerator {
     }
   }
 
-  // Validate the full path: car -> intersection -> turn -> exit
+  // Validate the full path: car -> intersection(s) -> turn(s) -> exit
   static bool _validateFullPath(int startX, int startY, CarFacing travelDir, TurnType turnType, int gridSize, List<RoadSegment> roadSegments, Set<(int, int)> intersections) {
     int x = startX;
     int y = startY;
     CarFacing currentDir = travelDir;
-    bool turnMade = false;
+
+    // U-turns require 2 turns at 2 different intersections
+    int turnsNeeded = turnType.isUTurn ? 2 : 1;
+    int turnsMade = 0;
+
     int steps = 0;
-    int maxSteps = gridSize * 2;
+    int maxSteps = gridSize * 4;
 
     while (steps < maxSteps) {
       int nextX = x + currentDir.dx;
       int nextY = y + currentDir.dy;
 
-      // Reached edge - this is success
+      // Reached edge - success only if all turns were made
       if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize) {
-        return true;
+        return turnsMade == turnsNeeded;
       }
 
       // Check if next cell is on road
@@ -368,9 +414,21 @@ class CarEscapeGenerator {
       y = nextY;
       steps++;
 
-      // Apply turn at intersection (only once)
-      if (!turnMade && intersections.contains((x, y))) {
-        CarFacing newDir = turnType.getExitDirection(currentDir);
+      // Apply turn at intersection
+      if (turnsMade < turnsNeeded && intersections.contains((x, y))) {
+        CarFacing newDir;
+
+        if (turnType.isUTurn) {
+          // U-turn: turn left twice or right twice
+          if (turnType == TurnType.uTurnLeft) {
+            newDir = currentDir.turnLeft;
+          } else {
+            newDir = currentDir.turnRight;
+          }
+        } else {
+          // Regular turn
+          newDir = turnType.getFirstTurnDirection(currentDir);
+        }
 
         // Verify there's a road in the new direction
         if (!_hasRoadInDirection(x, y, newDir, roadSegments)) {
@@ -378,7 +436,7 @@ class CarEscapeGenerator {
         }
 
         currentDir = newDir;
-        turnMade = true;
+        turnsMade++;
       }
     }
 
