@@ -23,41 +23,63 @@ flutter test test/widget_test.dart  # Run specific test file
 
 # Code analysis
 flutter analyze            # Run Dart analyzer
+flutter analyze lib/car_escape  # Analyze specific module
 ```
 
 ## Architecture Overview
 
-This is a Flutter puzzle game (Arrow Maze) where players direct colored arrows through grid-based paths to clear levels.
+This is a Flutter multi-game puzzle app with 4 distinct game modes, all using grid-based mechanics.
 
 ### State Management
 
 Uses Provider pattern with ChangeNotifier:
-- **GameState** (`lib/game/game_state.dart`): Central game logic, level progression, arrow movement, collision detection
-- **LocaleProvider** (`lib/l10n/locale_provider.dart`): Language switching (Korean/English), persisted via SharedPreferences
+- **GameState** (`lib/game/game_state.dart`): Arrow Maze game logic
+- **LocaleProvider** (`lib/l10n/locale_provider.dart`): Korean/English switching, persisted via SharedPreferences
 
-### Key Modules
+### Game Modules
 
-| Directory | Purpose |
-|-----------|---------|
-| `lib/game/` | Core game logic - state management and async level generation |
-| `lib/models/` | Data models for game entities |
-| `lib/screens/` | Full-page screens (game selection, gameplay) |
-| `lib/widgets/` | Reusable UI components including custom arrow path painter |
-| `lib/maze/` | Alternate maze game mode with BFS pathfinding |
-| `lib/services/` | External integrations (Google Mobile Ads) |
-| `lib/l10n/` | Localization support |
+Each game is self-contained in its own directory with consistent structure:
 
-### Monetization
+| Game | Directory | Key Features |
+|------|-----------|--------------|
+| Arrow Maze | `lib/game/`, `lib/screens/`, `lib/widgets/` | Colored arrows, path visualization, collision detection |
+| Maze | `lib/maze/` | BFS pathfinding, swipe navigation |
+| Parking Jam | `lib/parking_jam/` | Vehicle dragging, exit detection, multiple vehicle types |
+| Car Escape | `lib/car_escape/` | Turn-based movement, intersection navigation, U-turns |
 
-Google Mobile Ads integration (`lib/services/ad_service.dart`):
-- Banner ads on home screen
-- Rewarded video ads for hint system
-- Uses singleton pattern for ad management
+### Common Module Structure
 
-### Game Features
+Each game module follows this pattern:
+- `models/` - Data classes, enums, difficulty extensions
+- `widgets/` - Custom painters and interactive board widgets
+- `*_generator.dart` - Puzzle generation with validation
+- `*_screen.dart` - Full screen with timer, hint system, win dialog
 
-- 3 difficulty levels (Easy/Medium/Hard) with grid sizes of 10, 30, 50 cells
-- Multiple colored arrow paths with collision detection
-- Hint system gated by rewarded ads with confirmation dialog
-- Stopwatch for tracking level completion time
-- Custom painting for arrow path visualization (`lib/widgets/arrow_path_painter.dart`)
+### Shared Services
+
+- **AdService** (`lib/services/ad_service.dart`): Google Mobile Ads singleton
+  - Banner ads on home screen
+  - Rewarded video ads for hints (with confirmation dialog)
+- **Localization** (`lib/l10n/`): Korean/English support
+
+### Car Escape Specifics
+
+Complex turn system with path validation:
+- `TurnType`: straight, leftTurn, rightTurn, uTurnLeft, uTurnRight
+- U-turns require two consecutive intersections
+- Generator validates paths can reach grid edge
+- Collision animation: move → shake → return
+
+### Difficulty Configuration
+
+Difficulty settings are defined via Dart extensions on enum types (e.g., `CarEscapeDifficultyExtension`), providing:
+- Grid sizes
+- Entity counts (intersections, vehicles)
+- Complexity ranges
+
+### UI Patterns
+
+- Dark theme (`Color(0xFF1A1A2E)` background, `Color(0xFF2D2D44)` cards)
+- Adaptive layouts using `LayoutBuilder` for responsive sizing
+- Custom `CustomPainter` for roads, paths, and game boards
+- Animation controllers for exit/collision effects
