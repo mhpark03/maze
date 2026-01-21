@@ -25,9 +25,9 @@ extension CarEscapeDifficultyExtension on CarEscapeDifficulty {
       case CarEscapeDifficulty.easy:
         return 5;
       case CarEscapeDifficulty.medium:
-        return 7;
+        return 8;
       case CarEscapeDifficulty.hard:
-        return 10;
+        return 12;
     }
   }
 
@@ -38,7 +38,7 @@ extension CarEscapeDifficultyExtension on CarEscapeDifficulty {
       case CarEscapeDifficulty.medium:
         return 6;
       case CarEscapeDifficulty.hard:
-        return 9;
+        return 12;
     }
   }
 
@@ -49,7 +49,7 @@ extension CarEscapeDifficultyExtension on CarEscapeDifficulty {
       case CarEscapeDifficulty.medium:
         return (12, 18);
       case CarEscapeDifficulty.hard:
-        return (20, 30);
+        return (25, 40);
     }
   }
 }
