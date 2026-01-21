@@ -376,16 +376,16 @@ class _CarEscapeScreenState extends State<CarEscapeScreen> {
             : Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildInfoCard(
+                        _buildCompactInfoCard(
                           icon: Icons.directions_car,
                           label: l10n.carEscapeMovesLabel,
                           value: '$_clearedCars / $_totalCars',
                         ),
-                        _buildInfoCard(
+                        _buildCompactInfoCard(
                           icon: Icons.timer,
                           label: l10n.time,
                           value: _elapsedTime,
@@ -395,21 +395,24 @@ class _CarEscapeScreenState extends State<CarEscapeScreen> {
                   ),
                   Expanded(
                     child: _puzzle != null
-                        ? CarEscapeBoard(
-                            puzzle: _puzzle!,
-                            onCarTap: _onCarTap,
-                            onCarExited: _onCarExited,
-                            hintCarId: _hintCarId,
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: CarEscapeBoard(
+                              puzzle: _puzzle!,
+                              onCarTap: _onCarTap,
+                              onCarExited: _onCarExited,
+                              hintCarId: _hintCarId,
+                            ),
                           )
                         : const SizedBox(),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Text(
                       l10n.carEscapeInstruction,
                       style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
+                        color: Colors.white54,
+                        fontSize: 12,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -420,37 +423,39 @@ class _CarEscapeScreenState extends State<CarEscapeScreen> {
     );
   }
 
-  Widget _buildInfoCard({
+  Widget _buildCompactInfoCard({
     required IconData icon,
     required String label,
     required String value,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF2D2D44),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.green, size: 24),
-          const SizedBox(width: 12),
+          Icon(icon, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 label,
                 style: const TextStyle(
                   color: Colors.white54,
-                  fontSize: 12,
+                  fontSize: 10,
                 ),
               ),
               Text(
                 value,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
               ),

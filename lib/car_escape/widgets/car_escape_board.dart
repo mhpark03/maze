@@ -341,7 +341,8 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final size = min(constraints.maxWidth, constraints.maxHeight) * 0.95;
+        // Use maximum available space
+        final size = min(constraints.maxWidth, constraints.maxHeight);
         final cellSize = size / widget.puzzle.gridSize;
         _cellSize = cellSize; // Store for use in animations
 
@@ -351,10 +352,10 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
             height: size,
             decoration: BoxDecoration(
               color: const Color(0xFF4A7C3F),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(cellSize * 0.15),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(cellSize * 0.15),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
