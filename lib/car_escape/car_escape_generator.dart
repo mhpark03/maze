@@ -28,11 +28,16 @@ class CarEscapeGenerator {
     final gridSize = difficulty.gridSize;
     final intersectionCount = difficulty.intersectionCount;
     final (minCars, maxCars) = difficulty.carCountRange;
-    final targetCars = minCars + _random.nextInt(maxCars - minCars + 1);
 
-    for (int attempt = 0; attempt < 100; attempt++) {
-      final puzzle = _generatePuzzle(gridSize, intersectionCount, targetCars);
-      if (puzzle != null && _isSolvable(puzzle)) {
+    // Try main generator with varying target car counts
+    for (int attempt = 0; attempt < 80; attempt++) {
+      // Randomize target cars each attempt
+      final targetCars = minCars + _random.nextInt(maxCars - minCars + 1);
+      // Vary intersection count slightly for randomness
+      final variedIntersections = intersectionCount + _random.nextInt(3) - 1;
+
+      final puzzle = _generatePuzzle(gridSize, variedIntersections.clamp(3, intersectionCount + 2), targetCars);
+      if (puzzle != null && puzzle.cars.length >= minCars && _isSolvable(puzzle)) {
         return puzzle;
       }
       if (attempt % 20 == 0) {
@@ -40,19 +45,23 @@ class CarEscapeGenerator {
       }
     }
 
-    // Fallback: generate guaranteed puzzle with solvability check
-    for (int attempt = 0; attempt < 50; attempt++) {
-      final puzzle = _generateGuaranteedPuzzle(gridSize, intersectionCount);
-      if (_isSolvable(puzzle)) {
+    // Fallback: generate solvable puzzle incrementally
+    for (int attempt = 0; attempt < 20; attempt++) {
+      final variedIntersections = intersectionCount + _random.nextInt(5) - 2;
+      final targetCars = minCars + _random.nextInt(maxCars - minCars + 1);
+
+      final puzzle = _generateSolvablePuzzleIncremental(gridSize, variedIntersections.clamp(3, 16), targetCars);
+      if (puzzle.cars.length >= minCars) {
         return puzzle;
       }
-      if (attempt % 10 == 0) {
+      if (attempt % 5 == 0) {
         await Future.delayed(Duration.zero);
       }
     }
 
-    // Last resort: generate a simple solvable puzzle
-    return _generateSimpleSolvablePuzzle(gridSize);
+    // Last resort: generate a guaranteed solvable puzzle
+    final targetCars = minCars + _random.nextInt((maxCars - minCars) ~/ 2 + 1);
+    return _generateSolvablePuzzleIncremental(gridSize, intersectionCount, targetCars);
   }
 
   static CarJamPuzzle? _generatePuzzle(int gridSize, int intersectionCount, int targetCars) {
@@ -82,28 +91,48 @@ class CarEscapeGenerator {
     int availableSize = gridSize - 2;
     double spacing = availableSize / (divisions + 1);
 
+    // Generate candidate positions with random offsets
     List<(int, int)> candidates = [];
     for (int i = 1; i <= divisions; i++) {
       for (int j = 1; j <= divisions; j++) {
-        int x = (1 + spacing * i).round().clamp(1, gridSize - 2);
-        int y = (1 + spacing * j).round().clamp(1, gridSize - 2);
+        // Add random offset (-1 to +2) for more variety
+        int xOffset = _random.nextInt(4) - 1;
+        int yOffset = _random.nextInt(4) - 1;
+        int x = (1 + spacing * i + xOffset).round().clamp(1, gridSize - 2);
+        int y = (1 + spacing * j + yOffset).round().clamp(1, gridSize - 2);
         candidates.add((x, y));
       }
+    }
+
+    // Also add some completely random positions
+    for (int i = 0; i < count; i++) {
+      int x = 1 + _random.nextInt(gridSize - 2);
+      int y = 1 + _random.nextInt(gridSize - 2);
+      candidates.add((x, y));
     }
 
     candidates.shuffle(_random);
     Set<(int, int)> used = {};
 
+    // Ensure minimum distance between intersections for variety
     for (var pos in candidates) {
       if (intersections.length >= count) break;
-      if (!used.contains(pos)) {
+      if (used.contains(pos)) continue;
+
+      // Check minimum distance from existing intersections (at least 2 cells apart)
+      bool tooClose = intersections.any((i) =>
+        (i.x - pos.$1).abs() < 2 && (i.y - pos.$2).abs() < 2 &&
+        !((i.x - pos.$1).abs() == 0 || (i.y - pos.$2).abs() == 0)); // Allow same row/col
+
+      if (!tooClose) {
         intersections.add(Intersection(pos.$1, pos.$2));
         used.add(pos);
       }
     }
 
+    // Fill remaining with any valid position
     int attempts = 0;
-    while (intersections.length < count && attempts < 50) {
+    while (intersections.length < count && attempts < 100) {
       int x = 1 + _random.nextInt(gridSize - 2);
       int y = 1 + _random.nextInt(gridSize - 2);
       if (!used.contains((x, y))) {
@@ -486,113 +515,10 @@ class CarEscapeGenerator {
     return testPuzzle.isComplete;
   }
 
-  // Generate a more interesting puzzle that is guaranteed to be solvable
-  static CarJamPuzzle _generateSimpleSolvablePuzzle(int gridSize) {
-    // Create a grid of intersections (2x2 or 3x3 based on grid size)
-    int divisions = gridSize >= 8 ? 3 : 2;
-    double spacing = (gridSize - 2) / (divisions + 1);
-
+  // Generate a solvable puzzle by adding cars incrementally and checking solvability
+  static CarJamPuzzle _generateSolvablePuzzleIncremental(int gridSize, int intersectionCount, int targetCars) {
+    // Create intersections with random offsets
     List<Intersection> intersections = [];
-    for (int i = 1; i <= divisions; i++) {
-      for (int j = 1; j <= divisions; j++) {
-        int x = (1 + spacing * i).round().clamp(1, gridSize - 2);
-        int y = (1 + spacing * j).round().clamp(1, gridSize - 2);
-        // Avoid duplicates
-        if (!intersections.any((int_) => int_.x == x && int_.y == y)) {
-          intersections.add(Intersection(x, y));
-        }
-      }
-    }
-
-    // Create roads through each intersection row and column
-    List<RoadSegment> roadSegments = [];
-    Set<int> usedRows = {};
-    Set<int> usedCols = {};
-
-    for (var intersection in intersections) {
-      if (!usedRows.contains(intersection.y)) {
-        roadSegments.add(RoadSegment(
-          x1: 0, y1: intersection.y,
-          x2: gridSize - 1, y2: intersection.y,
-        ));
-        usedRows.add(intersection.y);
-      }
-      if (!usedCols.contains(intersection.x)) {
-        roadSegments.add(RoadSegment(
-          x1: intersection.x, y1: 0,
-          x2: intersection.x, y2: gridSize - 1,
-        ));
-        usedCols.add(intersection.x);
-      }
-    }
-
-    List<Color> shuffledColors = List.from(_carColors)..shuffle(_random);
-    List<CarEscapeColor> shuffledVehicleColors = List.from(_vehicleColors)..shuffle(_random);
-
-    // Place cars on edges of roads (guaranteed to exit without blocking)
-    List<GridCar> cars = [];
-    int carId = 0;
-
-    // Place cars at the edges of each road segment
-    for (var segment in roadSegments) {
-      if (segment.isHorizontal) {
-        // Left edge car going left
-        cars.add(GridCar(
-          id: carId++,
-          gridX: 1,
-          gridY: segment.y1,
-          travelDirection: CarFacing.left,
-          turnType: TurnType.straight,
-          color: shuffledColors[carId % shuffledColors.length],
-          vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
-        ));
-        // Right edge car going right
-        cars.add(GridCar(
-          id: carId++,
-          gridX: gridSize - 2,
-          gridY: segment.y1,
-          travelDirection: CarFacing.right,
-          turnType: TurnType.straight,
-          color: shuffledColors[carId % shuffledColors.length],
-          vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
-        ));
-      } else if (segment.isVertical) {
-        // Top edge car going up
-        cars.add(GridCar(
-          id: carId++,
-          gridX: segment.x1,
-          gridY: 1,
-          travelDirection: CarFacing.up,
-          turnType: TurnType.straight,
-          color: shuffledColors[carId % shuffledColors.length],
-          vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
-        ));
-        // Bottom edge car going down
-        cars.add(GridCar(
-          id: carId++,
-          gridX: segment.x1,
-          gridY: gridSize - 2,
-          travelDirection: CarFacing.down,
-          turnType: TurnType.straight,
-          color: shuffledColors[carId % shuffledColors.length],
-          vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
-        ));
-      }
-    }
-
-    return CarJamPuzzle(
-      gridSize: gridSize,
-      intersections: intersections,
-      roadSegments: roadSegments,
-      cars: cars,
-    );
-  }
-
-  static CarJamPuzzle _generateGuaranteedPuzzle(int gridSize, int intersectionCount) {
-    List<Intersection> intersections = [];
-    List<RoadSegment> roadSegments = [];
-    Set<String> addedSegments = {};
-
     int cols = (sqrt(intersectionCount) + 0.5).ceil();
     int rows = (intersectionCount / cols).ceil();
 
@@ -602,8 +528,10 @@ class CarEscapeGenerator {
     int created = 0;
     for (int row = 1; row <= rows && created < intersectionCount; row++) {
       for (int col = 1; col <= cols && created < intersectionCount; col++) {
-        int x = (1 + xSpacing * col).round().clamp(1, gridSize - 2);
-        int y = (1 + ySpacing * row).round().clamp(1, gridSize - 2);
+        int xOffset = _random.nextInt(3) - 1;
+        int yOffset = _random.nextInt(3) - 1;
+        int x = (1 + xSpacing * col + xOffset).round().clamp(1, gridSize - 2);
+        int y = (1 + ySpacing * row + yOffset).round().clamp(1, gridSize - 2);
 
         bool duplicate = intersections.any((i) => i.x == x && i.y == y);
         if (!duplicate) {
@@ -612,6 +540,10 @@ class CarEscapeGenerator {
         }
       }
     }
+
+    // Create roads
+    List<RoadSegment> roadSegments = [];
+    Set<String> addedSegments = {};
 
     for (var intersection in intersections) {
       var hSegment = RoadSegment(x1: 0, y1: intersection.y, x2: gridSize - 1, y2: intersection.y);
@@ -630,6 +562,8 @@ class CarEscapeGenerator {
     }
 
     Set<(int, int)> intersectionSet = intersections.map((i) => (i.x, i.y)).toSet();
+
+    // Collect all road cells
     Set<(int, int)> roadCells = {};
     for (var segment in roadSegments) {
       for (var cell in segment.cells) {
@@ -639,18 +573,10 @@ class CarEscapeGenerator {
       }
     }
 
-    List<GridCar> cars = [];
-    List<Color> shuffledColors = List.from(_carColors)..shuffle(_random);
-    List<CarEscapeColor> shuffledVehicleColors = List.from(_vehicleColors)..shuffle(_random);
-    int carId = 0;
-    Set<(int, int)> occupied = {};
+    // Find all valid car placements
+    List<_CarPlacement> allPlacements = [];
 
-    List<(int, int)> cellList = roadCells.toList()..shuffle(_random);
-
-    for (var cell in cellList) {
-      if (cars.length >= intersectionCount * 2) break;
-      if (occupied.contains(cell)) continue;
-
+    for (var cell in roadCells) {
       bool isOnHorizontal = _isOnHorizontalRoad(cell.$1, cell.$2, roadSegments);
       bool isOnVertical = _isOnVerticalRoad(cell.$1, cell.$2, roadSegments);
 
@@ -664,74 +590,86 @@ class CarEscapeGenerator {
         travelDirs.add(CarFacing.down);
       }
 
-      if (travelDirs.isEmpty) continue;
-
-      travelDirs.shuffle(_random);
-      List<TurnType> turnTypes = List.from(TurnType.values)..shuffle(_random);
-
-      bool placed = false;
       for (var travelDir in travelDirs) {
-        if (placed) break;
-
         var intersectionInfo = _findNextIntersection(cell.$1, cell.$2, travelDir, gridSize, roadSegments, intersectionSet);
 
+        // Only use simple turn types for reliability
+        List<TurnType> turnTypes = [TurnType.straight, TurnType.leftTurn, TurnType.rightTurn];
+
         for (var turnType in turnTypes) {
-          if (placed) break;
+          bool valid = false;
 
           if (intersectionInfo != null) {
             var (intX, intY) = intersectionInfo;
+            CarFacing exitDir = turnType.getExitDirection(travelDir);
 
-            // U-turns require special validation - need two intersections
-            if (turnType.isUTurn) {
-              // First turn direction at first intersection
-              CarFacing firstTurnDir = turnType == TurnType.uTurnLeft
-                  ? travelDir.turnLeft
-                  : travelDir.turnRight;
-
-              // Check if there's a road in the first turn direction
-              if (!_hasRoadInDirection(intX, intY, firstTurnDir, roadSegments)) continue;
-
-              // Find second intersection after first turn
-              var secondIntersection = _findNextIntersection(
-                  intX, intY, firstTurnDir, gridSize, roadSegments, intersectionSet);
-
-              if (secondIntersection == null) continue;
-
-              var (int2X, int2Y) = secondIntersection;
-
-              // Second turn direction (same as first: left or right)
-              CarFacing secondTurnDir = turnType == TurnType.uTurnLeft
-                  ? firstTurnDir.turnLeft
-                  : firstTurnDir.turnRight;
-
-              // Check if we can make second turn and reach edge
-              if (!_hasRoadInDirection(int2X, int2Y, secondTurnDir, roadSegments)) continue;
-              if (!_canReachEdge(int2X, int2Y, secondTurnDir, gridSize, roadSegments)) continue;
-            } else {
-              // Regular turns (straight, left, right)
-              CarFacing exitDir = turnType.getExitDirection(travelDir);
-
-              if (!_hasRoadInDirection(intX, intY, exitDir, roadSegments)) continue;
-              if (!_canReachEdge(intX, intY, exitDir, gridSize, roadSegments)) continue;
+            if (_hasRoadInDirection(intX, intY, exitDir, roadSegments) &&
+                _canReachEdge(intX, intY, exitDir, gridSize, roadSegments)) {
+              valid = true;
             }
           } else {
-            if (turnType != TurnType.straight) continue;
-            if (!_canReachEdge(cell.$1, cell.$2, travelDir, gridSize, roadSegments)) continue;
+            if (turnType == TurnType.straight &&
+                _canReachEdge(cell.$1, cell.$2, travelDir, gridSize, roadSegments)) {
+              valid = true;
+            }
           }
 
-          cars.add(GridCar(
-            id: carId,
-            gridX: cell.$1,
-            gridY: cell.$2,
-            travelDirection: travelDir,
-            turnType: turnType,
-            color: shuffledColors[carId % shuffledColors.length],
-            vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
-          ));
-          occupied.add(cell);
-          carId++;
-          placed = true;
+          if (valid) {
+            allPlacements.add(_CarPlacement(
+              x: cell.$1,
+              y: cell.$2,
+              travelDirection: travelDir,
+              turnType: turnType,
+            ));
+          }
         }
+      }
+    }
+
+    // Shuffle placements for randomness
+    allPlacements.shuffle(_random);
+
+    List<Color> shuffledColors = List.from(_carColors)..shuffle(_random);
+    List<CarEscapeColor> shuffledVehicleColors = List.from(_vehicleColors)..shuffle(_random);
+
+    // Add cars incrementally, checking solvability after each addition
+    List<GridCar> cars = [];
+    Set<(int, int)> occupied = {};
+    int carId = 0;
+
+    for (var placement in allPlacements) {
+      if (cars.length >= targetCars) break;
+      if (occupied.contains((placement.x, placement.y))) continue;
+
+      // Create a new car
+      GridCar newCar = GridCar(
+        id: carId,
+        gridX: placement.x,
+        gridY: placement.y,
+        travelDirection: placement.travelDirection,
+        turnType: placement.turnType,
+        color: shuffledColors[carId % shuffledColors.length],
+        vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
+      );
+
+      // Add the car and check solvability
+      cars.add(newCar);
+      occupied.add((placement.x, placement.y));
+
+      // Create a test puzzle to check solvability
+      CarJamPuzzle testPuzzle = CarJamPuzzle(
+        gridSize: gridSize,
+        intersections: intersections,
+        roadSegments: roadSegments,
+        cars: cars.map((c) => c.copyWith()).toList(),
+      );
+
+      if (!_isSolvable(testPuzzle)) {
+        // Remove the car if it makes the puzzle unsolvable
+        cars.removeLast();
+        occupied.remove((placement.x, placement.y));
+      } else {
+        carId++;
       }
     }
 
