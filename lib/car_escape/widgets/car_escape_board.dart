@@ -24,6 +24,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
     with TickerProviderStateMixin {
   final Map<int, AnimationController> _exitControllers = {};
   final Map<int, List<Offset>> _exitPaths = {}; // Store the path for each car
+  final Map<int, List<CarFacing>> _exitDirections = {}; // Store direction at each path point
   final Map<int, AnimationController> _shakeControllers = {};
   final Map<int, Animation<double>> _shakeAnimations = {};
   int? _highlightedBlockingCarId;
@@ -54,35 +55,47 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
     // Build the full path: current position -> path cells -> exit off edge
     final gridPath = widget.puzzle.getFullPath(car);
     List<Offset> pathOffsets = [Offset.zero]; // Start at current position (0,0 offset)
+    List<CarFacing> pathDirections = [car.travelDirection]; // Start with initial direction
+
+    // Track current direction and turns needed for U-turns
+    CarFacing currentDirection = car.travelDirection;
+    int turnsNeeded = car.turnType.isUTurn ? 2 : 1;
+    int turnsMade = 0;
 
     // Add each cell in the path as offset from starting position
     for (var cell in gridPath) {
+      // Check if this cell is an intersection where we turn
+      if (turnsMade < turnsNeeded && widget.puzzle.isIntersection(cell.$1, cell.$2)) {
+        CarFacing newDir;
+        if (car.turnType.isUTurn) {
+          // For U-turn: each turn is left or right
+          if (car.turnType == TurnType.uTurnLeft) {
+            newDir = currentDirection.turnLeft;
+          } else {
+            newDir = currentDirection.turnRight;
+          }
+        } else {
+          newDir = car.turnType.getFirstTurnDirection(currentDirection);
+        }
+
+        if (widget.puzzle.hasRoadInDirection(cell.$1, cell.$2, newDir)) {
+          currentDirection = newDir;
+          turnsMade++;
+        }
+      }
+
       pathOffsets.add(Offset(
         (cell.$1 - car.gridX).toDouble(),
         (cell.$2 - car.gridY).toDouble(),
       ));
-    }
-
-    // Determine the exit direction (after any turns)
-    CarFacing finalDirection = car.travelDirection;
-    if (gridPath.isNotEmpty) {
-      // Check if car reached an intersection and turned
-      for (var cell in gridPath) {
-        if (widget.puzzle.isIntersection(cell.$1, cell.$2)) {
-          CarFacing newDir = car.turnType.getExitDirection(finalDirection);
-          if (widget.puzzle.hasRoadInDirection(cell.$1, cell.$2, newDir)) {
-            finalDirection = newDir;
-          }
-          break; // Only turn at first intersection
-        }
-      }
+      pathDirections.add(currentDirection);
     }
 
     // Add final exit point off the edge
     final lastOffset = pathOffsets.last;
     double exitX = lastOffset.dx;
     double exitY = lastOffset.dy;
-    switch (finalDirection) {
+    switch (currentDirection) {
       case CarFacing.left:
         exitX -= 3;
         break;
@@ -97,6 +110,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
         break;
     }
     pathOffsets.add(Offset(exitX, exitY));
+    pathDirections.add(currentDirection); // Final direction stays the same
 
     // Calculate animation duration based on path length
     final duration = Duration(milliseconds: 150 * pathOffsets.length);
@@ -108,6 +122,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
 
     _exitControllers[car.id] = controller;
     _exitPaths[car.id] = pathOffsets;
+    _exitDirections[car.id] = pathDirections;
     car.isExiting = true;
 
     controller.addStatusListener((status) {
@@ -115,6 +130,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
         widget.onCarExited(car);
         _exitControllers.remove(car.id)?.dispose();
         _exitPaths.remove(car.id);
+        _exitDirections.remove(car.id);
         if (mounted) setState(() {});
       }
     });
@@ -142,6 +158,32 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
       start.dx + (end.dx - start.dx) * localT,
       start.dy + (end.dy - start.dy) * localT,
     );
+  }
+
+  // Get the direction at a given point along the path
+  CarFacing _getPathDirection(List<CarFacing> directions, double t) {
+    if (directions.isEmpty) return CarFacing.up;
+    if (directions.length == 1) return directions[0];
+
+    double totalSegments = directions.length - 1;
+    double segmentProgress = t * totalSegments;
+    int segmentIndex = segmentProgress.floor().clamp(0, directions.length - 1);
+
+    return directions[segmentIndex];
+  }
+
+  // Convert CarFacing to quarter turns for RotatedBox
+  int _facingToQuarterTurns(CarFacing facing) {
+    switch (facing) {
+      case CarFacing.up:
+        return 0;
+      case CarFacing.right:
+        return 1;
+      case CarFacing.down:
+        return 2;
+      case CarFacing.left:
+        return 3;
+    }
   }
 
   void _startShakeAnimation(GridCar car) {
@@ -350,20 +392,70 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
     }
 
     if (exitPath != null && exitController != null) {
+      final exitDirections = _exitDirections[car.id];
       return AnimatedBuilder(
         animation: exitController,
         builder: (context, child) {
           final offset = _getPathPosition(exitPath, exitController.value);
+
+          // Get current direction and calculate rotation
+          CarFacing currentFacing = car.travelDirection;
+          if (exitDirections != null) {
+            currentFacing = _getPathDirection(exitDirections, exitController.value);
+          }
+          int dynamicQuarterTurns = _facingToQuarterTurns(currentFacing);
+
+          // Build car widget with dynamic rotation
+          Widget animatedCarWidget = GestureDetector(
+            onTap: () => _onCarTap(car),
+            child: SizedBox(
+              width: carSize,
+              height: carSize,
+              child: Stack(
+                children: [
+                  // Car image with dynamic rotation
+                  Positioned.fill(
+                    child: RotatedBox(
+                      quarterTurns: dynamicQuarterTurns,
+                      child: Image.asset(
+                        car.imagePath,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  // Turn type icon - rotates with the car
+                  Positioned.fill(
+                    child: Center(
+                      child: Transform.rotate(
+                        angle: currentFacing.rotation * pi / 180,
+                        child: Icon(
+                          car.turnType.icon,
+                          color: Colors.white,
+                          size: carSize * 0.5,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.8),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+
           return Positioned(
             left: left + offset.dx * cellSize,
             top: top + offset.dy * cellSize,
             child: Opacity(
               opacity: (1 - exitController.value * 0.5).clamp(0.0, 1.0),
-              child: child,
+              child: animatedCarWidget,
             ),
           );
         },
-        child: carWidget,
       );
     }
 
