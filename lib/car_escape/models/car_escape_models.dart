@@ -300,8 +300,12 @@ class CarJamPuzzle {
 
   List<GridCar> get activeCars => cars.where((c) => !c.hasExited).toList();
 
+  // Cars that are stationary (not exited and not currently exiting)
+  List<GridCar> get stationaryCars => cars.where((c) => !c.hasExited && !c.isExiting).toList();
+
   Set<(int, int)> get occupiedCells {
-    return activeCars.map((c) => (c.gridX, c.gridY)).toSet();
+    // Only stationary cars block other cars (exiting cars don't block)
+    return stationaryCars.map((c) => (c.gridX, c.gridY)).toSet();
   }
 
   bool isOnRoad(int x, int y) {
@@ -442,8 +446,9 @@ class CarJamPuzzle {
 
     final path = getFullPath(car);
 
+    // Only stationary cars can block (exiting cars don't block)
     for (var cell in path) {
-      for (var other in activeCars) {
+      for (var other in stationaryCars) {
         if (other.id != car.id && other.gridX == cell.$1 && other.gridY == cell.$2) {
           return other;
         }
