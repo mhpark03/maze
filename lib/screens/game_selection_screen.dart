@@ -62,12 +62,15 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // Calculate tile size based on available space
+                  // Calculate tile size to fit all 4 tiles on screen
                   final padding = 16.0;
                   final spacing = 12.0;
                   final availableWidth = constraints.maxWidth - (padding * 2) - spacing;
+                  final availableHeight = constraints.maxHeight - (padding * 2) - spacing;
                   final tileWidth = availableWidth / 2;
-                  final tileHeight = tileWidth * 1.1; // Slightly taller than wide
+                  final tileHeight = availableHeight / 2;
+                  // Use the smaller ratio to ensure tiles fit both dimensions
+                  final aspectRatio = tileWidth / tileHeight;
 
                   return Padding(
                     padding: EdgeInsets.all(padding),
@@ -75,7 +78,8 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                       crossAxisCount: 2,
                       mainAxisSpacing: spacing,
                       crossAxisSpacing: spacing,
-                      childAspectRatio: tileWidth / tileHeight,
+                      childAspectRatio: aspectRatio,
+                      physics: const NeverScrollableScrollPhysics(), // Disable scrolling
                       children: [
                         _buildGameTile(
                           context: context,
@@ -131,58 +135,73 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF2D2D44),
-              color.withValues(alpha: 0.15),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.25),
-              blurRadius: 12,
-              spreadRadius: 1,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate sizes based on tile dimensions
+        final tileSize = constraints.maxWidth < constraints.maxHeight
+            ? constraints.maxWidth
+            : constraints.maxHeight;
+        final iconContainerSize = tileSize * 0.35;
+        final iconSize = iconContainerSize * 0.55;
+        final fontSize = tileSize * 0.1;
+        final spacing = tileSize * 0.06;
+        final borderRadius = tileSize * 0.08;
+
+        return GestureDetector(
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF2D2D44),
+                  color.withValues(alpha: 0.15),
+                ],
               ),
-              child: Icon(icon, size: 40, color: color),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 4),
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: iconContainerSize,
+                  height: iconContainerSize,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: iconSize, color: color),
+                ),
+                SizedBox(height: spacing),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: spacing),
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: fontSize.clamp(12.0, 20.0),
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
