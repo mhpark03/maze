@@ -60,44 +60,55 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
         child: Column(
           children: [
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildGameCard(
-                      context: context,
-                      title: l10n.arrowMaze,
-                      icon: Icons.arrow_forward,
-                      color: const Color(0xFF4ECDC4),
-                      onTap: () => _showArrowMazeDifficultyDialog(context, l10n),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Calculate tile size based on available space
+                  final padding = 16.0;
+                  final spacing = 12.0;
+                  final availableWidth = constraints.maxWidth - (padding * 2) - spacing;
+                  final tileWidth = availableWidth / 2;
+                  final tileHeight = tileWidth * 1.1; // Slightly taller than wide
+
+                  return Padding(
+                    padding: EdgeInsets.all(padding),
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: spacing,
+                      crossAxisSpacing: spacing,
+                      childAspectRatio: tileWidth / tileHeight,
+                      children: [
+                        _buildGameTile(
+                          context: context,
+                          title: l10n.arrowMaze,
+                          icon: Icons.arrow_forward,
+                          color: const Color(0xFF4ECDC4),
+                          onTap: () => _showArrowMazeDifficultyDialog(context, l10n),
+                        ),
+                        _buildGameTile(
+                          context: context,
+                          title: l10n.maze,
+                          icon: Icons.grid_4x4,
+                          color: Colors.purple,
+                          onTap: () => _showMazeDifficultyDialog(context, l10n),
+                        ),
+                        _buildGameTile(
+                          context: context,
+                          title: l10n.parkingJam,
+                          icon: Icons.local_parking,
+                          color: Colors.orange,
+                          onTap: () => _showParkingJamDifficultyDialog(context, l10n),
+                        ),
+                        _buildGameTile(
+                          context: context,
+                          title: l10n.carEscape,
+                          icon: Icons.directions_car,
+                          color: Colors.green,
+                          onTap: () => _showCarEscapeDifficultyDialog(context, l10n),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                    _buildGameCard(
-                      context: context,
-                      title: l10n.maze,
-                      icon: Icons.grid_4x4,
-                      color: Colors.purple,
-                      onTap: () => _showMazeDifficultyDialog(context, l10n),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildGameCard(
-                      context: context,
-                      title: l10n.parkingJam,
-                      icon: Icons.local_parking,
-                      color: Colors.orange,
-                      onTap: () => _showParkingJamDifficultyDialog(context, l10n),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildGameCard(
-                      context: context,
-                      title: l10n.carEscape,
-                      icon: Icons.directions_car,
-                      color: Colors.green,
-                      onTap: () => _showCarEscapeDifficultyDialog(context, l10n),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
             if (_adService.isBannerAdReady && _adService.bannerAd != null)
@@ -113,7 +124,7 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
     );
   }
 
-  Widget _buildGameCard({
+  Widget _buildGameTile({
     required BuildContext context,
     required String title,
     required IconData icon,
@@ -123,30 +134,50 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: const Color(0xFF2D2D44),
-          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF2D2D44),
+              color.withValues(alpha: 0.15),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.2),
-              blurRadius: 15,
-              spreadRadius: 2,
+              color: color.withValues(alpha: 0.25),
+              blurRadius: 12,
+              spreadRadius: 1,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 64, color: color),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 40, color: color),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
