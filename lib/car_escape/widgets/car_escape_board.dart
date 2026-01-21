@@ -309,22 +309,21 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
                   ],
                 ),
               ),
-            // Turn type icon overlay
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(4),
-                ),
+            // Turn type icon overlay - centered with transparent background
+            Positioned.fill(
+              child: Center(
                 child: Transform.rotate(
                   angle: car.travelDirection.rotation * pi / 180,
                   child: Icon(
                     car.turnType.icon,
                     color: Colors.white,
-                    size: carSize * 0.35,
+                    size: carSize * 0.5,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.8),
+                        blurRadius: 4,
+                      ),
+                    ],
                   ),
                 ),
               ),
