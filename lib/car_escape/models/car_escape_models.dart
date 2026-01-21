@@ -34,22 +34,22 @@ extension CarEscapeDifficultyExtension on CarEscapeDifficulty {
   int get intersectionCount {
     switch (this) {
       case CarEscapeDifficulty.easy:
-        return 2;
+        return 4;
       case CarEscapeDifficulty.medium:
-        return 6;
-      case CarEscapeDifficulty.hard:
         return 12;
+      case CarEscapeDifficulty.hard:
+        return 24;
     }
   }
 
   (int, int) get carCountRange {
     switch (this) {
       case CarEscapeDifficulty.easy:
-        return (4, 6);
+        return (8, 12);
       case CarEscapeDifficulty.medium:
-        return (10, 14);
+        return (20, 28);
       case CarEscapeDifficulty.hard:
-        return (20, 30);
+        return (40, 60);
     }
   }
 }

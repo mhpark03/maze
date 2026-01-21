@@ -384,17 +384,17 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
           children: [
             _buildCarEscapeDifficultyOption(
               context: context,
-              title: '${l10n.easy} (5x5, 2 ${l10n.carEscapeIntersections})',
+              title: '${l10n.easy} (5x5, 4 ${l10n.carEscapeIntersections})',
               difficulty: CarEscapeDifficulty.easy,
             ),
             _buildCarEscapeDifficultyOption(
               context: context,
-              title: '${l10n.normal} (7x7, 6 ${l10n.carEscapeIntersections})',
+              title: '${l10n.normal} (7x7, 12 ${l10n.carEscapeIntersections})',
               difficulty: CarEscapeDifficulty.medium,
             ),
             _buildCarEscapeDifficultyOption(
               context: context,
-              title: '${l10n.hard} (10x10, 12 ${l10n.carEscapeIntersections})',
+              title: '${l10n.hard} (10x10, 24 ${l10n.carEscapeIntersections})',
               difficulty: CarEscapeDifficulty.hard,
             ),
           ],
