@@ -322,7 +322,10 @@ class CarJamPuzzle {
   bool canCarExit(GridCar car) {
     if (car.hasExited || car.isExiting) return false;
 
+    // Get occupied cells excluding this car's position
     final occupied = occupiedCells;
+    occupied.remove((car.gridX, car.gridY)); // Exclude self
+
     final path = getFullPath(car);
 
     // Must have a path to edge
@@ -336,7 +339,7 @@ class CarJamPuzzle {
       return false;
     }
 
-    // Check if path is clear
+    // Check if path is clear (excluding self)
     for (var cell in path) {
       if (occupied.contains(cell)) {
         return false;
