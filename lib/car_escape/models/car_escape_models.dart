@@ -2,6 +2,23 @@ import 'package:flutter/material.dart';
 
 enum CarEscapeDifficulty { easy, medium, hard }
 
+enum CarEscapeColor { red, blue, green, yellow, purple, orange, cyan, pink }
+
+extension CarEscapeColorExtension on CarEscapeColor {
+  String get name {
+    switch (this) {
+      case CarEscapeColor.red: return 'red';
+      case CarEscapeColor.blue: return 'blue';
+      case CarEscapeColor.green: return 'green';
+      case CarEscapeColor.yellow: return 'yellow';
+      case CarEscapeColor.purple: return 'purple';
+      case CarEscapeColor.orange: return 'orange';
+      case CarEscapeColor.cyan: return 'cyan';
+      case CarEscapeColor.pink: return 'pink';
+    }
+  }
+}
+
 extension CarEscapeDifficultyExtension on CarEscapeDifficulty {
   int get gridSize {
     switch (this) {
@@ -160,6 +177,7 @@ class GridCar {
   final CarFacing travelDirection; // Direction the car is moving
   final TurnType turnType; // What to do at the next intersection
   final Color color;
+  final CarEscapeColor vehicleColor;
   bool isExiting = false;
   bool hasExited = false;
 
@@ -170,7 +188,11 @@ class GridCar {
     required this.travelDirection,
     required this.turnType,
     required this.color,
+    required this.vehicleColor,
   });
+
+  // Image path for the car asset
+  String get imagePath => 'assets/images/cars/sedan_${vehicleColor.name}.png';
 
   // The direction the car will exit after making its turn
   CarFacing get exitDirection => turnType.getExitDirection(travelDirection);
@@ -182,6 +204,7 @@ class GridCar {
     CarFacing? travelDirection,
     TurnType? turnType,
     Color? color,
+    CarEscapeColor? vehicleColor,
   }) {
     final car = GridCar(
       id: id ?? this.id,
@@ -190,6 +213,7 @@ class GridCar {
       travelDirection: travelDirection ?? this.travelDirection,
       turnType: turnType ?? this.turnType,
       color: color ?? this.color,
+      vehicleColor: vehicleColor ?? this.vehicleColor,
     );
     car.isExiting = isExiting;
     car.hasExited = hasExited;

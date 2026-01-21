@@ -254,61 +254,78 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
     final isHighlighted = _highlightedBlockingCarId == car.id;
     final isHintCar = widget.hintCarId == car.id;
 
+    // Calculate rotation for car image based on travel direction
+    // The car image faces UP by default
+    int quarterTurns = 0;
+    switch (car.travelDirection) {
+      case CarFacing.up:
+        quarterTurns = 0;
+        break;
+      case CarFacing.right:
+        quarterTurns = 1;
+        break;
+      case CarFacing.down:
+        quarterTurns = 2;
+        break;
+      case CarFacing.left:
+        quarterTurns = 3;
+        break;
+    }
+
     Widget carWidget = GestureDetector(
       onTap: () => _onCarTap(car),
-      child: Container(
+      child: SizedBox(
         width: carSize,
         height: carSize,
-        decoration: BoxDecoration(
-          color: car.color,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: isHintCar
-                ? Colors.white
-                : isHighlighted
-                    ? Colors.red
-                    : Colors.black.withValues(alpha: 0.3),
-            width: isHintCar || isHighlighted ? 3 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isHintCar
-                  ? Colors.white.withValues(alpha: 0.8)
-                  : isHighlighted
-                      ? Colors.red.withValues(alpha: 0.5)
-                      : Colors.black.withValues(alpha: 0.3),
-              blurRadius: isHintCar || isHighlighted ? 10 : 3,
-              spreadRadius: isHintCar || isHighlighted ? 2 : 0,
-            ),
-          ],
-        ),
         child: Stack(
           children: [
-            // Car body gradient
+            // Car image
             Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(5),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.4),
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.2),
-                    ],
-                  ),
+              child: RotatedBox(
+                quarterTurns: quarterTurns,
+                child: Image.asset(
+                  car.imagePath,
+                  fit: BoxFit.contain,
                 ),
               ),
             ),
-            // Turn type icon
-            Center(
-              child: Transform.rotate(
-                angle: car.travelDirection.rotation * pi / 180,
-                child: Icon(
-                  car.turnType.icon,
-                  color: Colors.white.withValues(alpha: 0.9),
-                  size: carSize * 0.5,
+            // Highlight overlay
+            if (isHighlighted || isHintCar)
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isHintCar ? Colors.yellow : Colors.white,
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isHintCar
+                          ? Colors.yellow.withValues(alpha: 0.6)
+                          : Colors.white.withValues(alpha: 0.5),
+                      blurRadius: 12,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+            // Turn type icon overlay
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Transform.rotate(
+                  angle: car.travelDirection.rotation * pi / 180,
+                  child: Icon(
+                    car.turnType.icon,
+                    color: Colors.white,
+                    size: carSize * 0.35,
+                  ),
                 ),
               ),
             ),

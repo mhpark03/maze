@@ -22,6 +22,8 @@ class CarEscapeGenerator {
     Colors.lime,
   ];
 
+  static final List<CarEscapeColor> _vehicleColors = CarEscapeColor.values;
+
   static Future<CarJamPuzzle> generate(CarEscapeDifficulty difficulty) async {
     final gridSize = difficulty.gridSize;
     final intersectionCount = difficulty.intersectionCount;
@@ -167,6 +169,7 @@ class CarEscapeGenerator {
     List<GridCar> cars = [];
     Set<(int, int)> occupied = {};
     List<Color> shuffledColors = List.from(_carColors)..shuffle(_random);
+    List<CarEscapeColor> shuffledVehicleColors = List.from(_vehicleColors)..shuffle(_random);
     int carId = 0;
 
     // Get intersection positions as a set
@@ -296,6 +299,7 @@ class CarEscapeGenerator {
         travelDirection: placement.travelDirection,
         turnType: placement.turnType,
         color: shuffledColors[carId % shuffledColors.length],
+        vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
       ));
       occupied.add((placement.x, placement.y));
       carId++;
@@ -523,6 +527,7 @@ class CarEscapeGenerator {
 
     List<GridCar> cars = [];
     List<Color> shuffledColors = List.from(_carColors)..shuffle(_random);
+    List<CarEscapeColor> shuffledVehicleColors = List.from(_vehicleColors)..shuffle(_random);
     int carId = 0;
     Set<(int, int)> occupied = {};
 
@@ -577,6 +582,7 @@ class CarEscapeGenerator {
             travelDirection: travelDir,
             turnType: turnType,
             color: shuffledColors[carId % shuffledColors.length],
+            vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
           ));
           occupied.add(cell);
           carId++;
