@@ -40,7 +40,19 @@ class CarEscapeGenerator {
       }
     }
 
-    return _generateGuaranteedPuzzle(gridSize, intersectionCount);
+    // Fallback: generate guaranteed puzzle with solvability check
+    for (int attempt = 0; attempt < 50; attempt++) {
+      final puzzle = _generateGuaranteedPuzzle(gridSize, intersectionCount);
+      if (_isSolvable(puzzle)) {
+        return puzzle;
+      }
+      if (attempt % 10 == 0) {
+        await Future.delayed(Duration.zero);
+      }
+    }
+
+    // Last resort: generate a simple solvable puzzle
+    return _generateSimpleSolvablePuzzle(gridSize);
   }
 
   static CarJamPuzzle? _generatePuzzle(int gridSize, int intersectionCount, int targetCars) {
@@ -472,6 +484,89 @@ class CarEscapeGenerator {
     }
 
     return testPuzzle.isComplete;
+  }
+
+  // Generate a simple puzzle that is guaranteed to be solvable
+  static CarJamPuzzle _generateSimpleSolvablePuzzle(int gridSize) {
+    // Create a simple cross intersection in the center
+    int centerX = gridSize ~/ 2;
+    int centerY = gridSize ~/ 2;
+
+    List<Intersection> intersections = [Intersection(centerX, centerY)];
+
+    // Create horizontal and vertical roads through center
+    List<RoadSegment> roadSegments = [
+      RoadSegment(x1: 0, y1: centerY, x2: gridSize - 1, y2: centerY),
+      RoadSegment(x1: centerX, y1: 0, x2: centerX, y2: gridSize - 1),
+    ];
+
+    List<Color> shuffledColors = List.from(_carColors)..shuffle(_random);
+    List<CarEscapeColor> shuffledVehicleColors = List.from(_vehicleColors)..shuffle(_random);
+
+    // Place cars that can definitely exit (no blocking)
+    List<GridCar> cars = [];
+    int carId = 0;
+
+    // Place cars on horizontal road (going left or right to exit)
+    // Left side - going left (can exit immediately)
+    if (centerX > 2) {
+      cars.add(GridCar(
+        id: carId++,
+        gridX: 1,
+        gridY: centerY,
+        travelDirection: CarFacing.left,
+        turnType: TurnType.straight,
+        color: shuffledColors[carId % shuffledColors.length],
+        vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
+      ));
+    }
+
+    // Right side - going right (can exit immediately)
+    if (centerX < gridSize - 3) {
+      cars.add(GridCar(
+        id: carId++,
+        gridX: gridSize - 2,
+        gridY: centerY,
+        travelDirection: CarFacing.right,
+        turnType: TurnType.straight,
+        color: shuffledColors[carId % shuffledColors.length],
+        vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
+      ));
+    }
+
+    // Place cars on vertical road
+    // Top - going up (can exit immediately)
+    if (centerY > 2) {
+      cars.add(GridCar(
+        id: carId++,
+        gridX: centerX,
+        gridY: 1,
+        travelDirection: CarFacing.up,
+        turnType: TurnType.straight,
+        color: shuffledColors[carId % shuffledColors.length],
+        vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
+      ));
+    }
+
+    // Bottom - going down (can exit immediately)
+    if (centerY < gridSize - 3) {
+      cars.add(GridCar(
+        id: carId++,
+        gridX: centerX,
+        gridY: gridSize - 2,
+        travelDirection: CarFacing.down,
+        turnType: TurnType.straight,
+        color: shuffledColors[carId % shuffledColors.length],
+        vehicleColor: shuffledVehicleColors[carId % shuffledVehicleColors.length],
+      ));
+    }
+
+    return CarJamPuzzle(
+      gridSize: gridSize,
+      intersections: intersections,
+      roadSegments: roadSegments,
+      cars: cars,
+    );
   }
 
   static CarJamPuzzle _generateGuaranteedPuzzle(int gridSize, int intersectionCount) {
