@@ -28,6 +28,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
   final Map<int, AnimationController> _shakeControllers = {};
   final Map<int, Animation<double>> _shakeAnimations = {};
   int? _highlightedBlockingCarId;
+  double _cellSize = 50; // Default cell size, updated in build
 
   @override
   void dispose() {
@@ -212,12 +213,16 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
       vsync: this,
     );
 
+    // Scale shake amount based on cell size
+    final shakeAmount = _cellSize * 0.12;
+    final smallShake = _cellSize * 0.08;
+
     final animation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0, end: 6), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: 6, end: -6), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -6, end: 4), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 4, end: -4), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -4, end: 0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0, end: shakeAmount), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: shakeAmount, end: -shakeAmount), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -shakeAmount, end: smallShake), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: smallShake, end: -smallShake), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -smallShake, end: 0), weight: 1),
     ]).animate(CurvedAnimation(
       parent: controller,
       curve: Curves.easeInOut,
@@ -244,6 +249,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
       builder: (context, constraints) {
         final size = min(constraints.maxWidth, constraints.maxHeight) * 0.95;
         final cellSize = size / widget.puzzle.gridSize;
+        _cellSize = cellSize; // Store for use in animations
 
         return Center(
           child: Container(
@@ -335,18 +341,18 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
             if (isHighlighted || isHintCar)
               Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(cellSize * 0.15),
                   border: Border.all(
                     color: isHintCar ? Colors.yellow : Colors.white,
-                    width: 3,
+                    width: cellSize * 0.06,
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: isHintCar
                           ? Colors.yellow.withValues(alpha: 0.6)
                           : Colors.white.withValues(alpha: 0.5),
-                      blurRadius: 12,
-                      spreadRadius: 4,
+                      blurRadius: cellSize * 0.25,
+                      spreadRadius: cellSize * 0.08,
                     ),
                   ],
                 ),
@@ -363,7 +369,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
                     shadows: [
                       Shadow(
                         color: Colors.black.withValues(alpha: 0.8),
-                        blurRadius: 4,
+                        blurRadius: cellSize * 0.08,
                       ),
                     ],
                   ),
@@ -435,7 +441,7 @@ class _CarEscapeBoardState extends State<CarEscapeBoard>
                           shadows: [
                             Shadow(
                               color: Colors.black.withValues(alpha: 0.8),
-                              blurRadius: 4,
+                              blurRadius: cellSize * 0.08,
                             ),
                           ],
                         ),
@@ -606,34 +612,44 @@ class _RoadSegmentPainter extends CustomPainter {
   }
 
   void _drawHorizontalDashedLine(Canvas canvas, double startX, double endX, double y) {
+    final strokeWidth = cellSize * 0.04;
+    final padding = cellSize * 0.2;
+    final dashLength = cellSize * 0.25;
+    final gapLength = cellSize * 0.4;
+
     final linePaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.5)
-      ..strokeWidth = 2;
+      ..strokeWidth = strokeWidth;
 
-    double x = startX + 10;
-    while (x < endX - 10) {
+    double x = startX + padding;
+    while (x < endX - padding) {
       canvas.drawLine(
         Offset(x, y),
-        Offset(min(x + 12, endX - 10), y),
+        Offset(min(x + dashLength, endX - padding), y),
         linePaint,
       );
-      x += 20;
+      x += gapLength;
     }
   }
 
   void _drawVerticalDashedLine(Canvas canvas, double x, double startY, double endY) {
+    final strokeWidth = cellSize * 0.04;
+    final padding = cellSize * 0.2;
+    final dashLength = cellSize * 0.25;
+    final gapLength = cellSize * 0.4;
+
     final linePaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.5)
-      ..strokeWidth = 2;
+      ..strokeWidth = strokeWidth;
 
-    double y = startY + 10;
-    while (y < endY - 10) {
+    double y = startY + padding;
+    while (y < endY - padding) {
       canvas.drawLine(
         Offset(x, y),
-        Offset(x, min(y + 12, endY - 10)),
+        Offset(x, min(y + dashLength, endY - padding)),
         linePaint,
       );
-      y += 20;
+      y += gapLength;
     }
   }
 
@@ -641,6 +657,9 @@ class _RoadSegmentPainter extends CustomPainter {
     final exitPaint = Paint()
       ..color = const Color(0xFF2A2A2A)
       ..style = PaintingStyle.fill;
+
+    final indicatorSize = cellSize * 0.2;
+    final indicatorOffset = cellSize * 0.1;
 
     // Find all road segments that touch edges and draw exit indicators
     for (var segment in roadSegments) {
@@ -652,14 +671,14 @@ class _RoadSegmentPainter extends CustomPainter {
         if (minX == 0) {
           // Left edge exit
           canvas.drawRect(
-            Rect.fromLTWH(-5, y, 10, roadWidth),
+            Rect.fromLTWH(-indicatorOffset, y, indicatorSize, roadWidth),
             exitPaint,
           );
         }
         if (maxX == gridSize - 1) {
           // Right edge exit
           canvas.drawRect(
-            Rect.fromLTWH(size.width - 5, y, 10, roadWidth),
+            Rect.fromLTWH(size.width - indicatorOffset, y, indicatorSize, roadWidth),
             exitPaint,
           );
         }
@@ -671,14 +690,14 @@ class _RoadSegmentPainter extends CustomPainter {
         if (minY == 0) {
           // Top edge exit
           canvas.drawRect(
-            Rect.fromLTWH(x, -5, roadWidth, 10),
+            Rect.fromLTWH(x, -indicatorOffset, roadWidth, indicatorSize),
             exitPaint,
           );
         }
         if (maxY == gridSize - 1) {
           // Bottom edge exit
           canvas.drawRect(
-            Rect.fromLTWH(x, size.height - 5, roadWidth, 10),
+            Rect.fromLTWH(x, size.height - indicatorOffset, roadWidth, indicatorSize),
             exitPaint,
           );
         }
