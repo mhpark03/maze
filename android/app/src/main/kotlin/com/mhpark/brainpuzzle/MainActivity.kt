@@ -1,4 +1,4 @@
-package com.example.arrow_maze_app
+package com.mhpark.brainpuzzle
 
 import io.flutter.embedding.android.FlutterActivity
 
