@@ -372,6 +372,16 @@ class _RoadSegmentPainter extends CustomPainter {
     required this.intersections,
   });
 
+  // Check if there's a road in a specific direction from a point
+  bool _hasRoadInDirection(int x, int y, int dx, int dy) {
+    for (var segment in roadSegments) {
+      if (!segment.containsPoint(x, y)) continue;
+      if (dx != 0 && segment.isHorizontal) return true;
+      if (dy != 0 && segment.isVertical) return true;
+    }
+    return false;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final roadPaint = Paint()
@@ -443,6 +453,48 @@ class _RoadSegmentPainter extends CustomPainter {
       Rect.fromLTWH(x, y, roadWidth, roadWidth),
       roadPaint,
     );
+
+    // Draw direction arrows showing available roads
+    final centerX = intersection.x * cellSize + cellSize / 2;
+    final centerY = intersection.y * cellSize + cellSize / 2;
+    final arrowSize = cellSize * 0.15;
+
+    final arrowPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.6)
+      ..style = PaintingStyle.fill;
+
+    // Check and draw arrows for each direction
+    // Up
+    if (_hasRoadInDirection(intersection.x, intersection.y, 0, -1)) {
+      _drawArrow(canvas, centerX, centerY - roadWidth * 0.3, 0, arrowSize, arrowPaint);
+    }
+    // Down
+    if (_hasRoadInDirection(intersection.x, intersection.y, 0, 1)) {
+      _drawArrow(canvas, centerX, centerY + roadWidth * 0.3, 180, arrowSize, arrowPaint);
+    }
+    // Left
+    if (_hasRoadInDirection(intersection.x, intersection.y, -1, 0)) {
+      _drawArrow(canvas, centerX - roadWidth * 0.3, centerY, 270, arrowSize, arrowPaint);
+    }
+    // Right
+    if (_hasRoadInDirection(intersection.x, intersection.y, 1, 0)) {
+      _drawArrow(canvas, centerX + roadWidth * 0.3, centerY, 90, arrowSize, arrowPaint);
+    }
+  }
+
+  void _drawArrow(Canvas canvas, double x, double y, double rotation, double size, Paint paint) {
+    canvas.save();
+    canvas.translate(x, y);
+    canvas.rotate(rotation * pi / 180);
+
+    final path = Path();
+    path.moveTo(0, -size);
+    path.lineTo(size * 0.6, size * 0.3);
+    path.lineTo(-size * 0.6, size * 0.3);
+    path.close();
+
+    canvas.drawPath(path, paint);
+    canvas.restore();
   }
 
   void _drawHorizontalDashedLine(Canvas canvas, double startX, double endX, double y) {
