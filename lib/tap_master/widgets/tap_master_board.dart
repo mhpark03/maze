@@ -21,7 +21,6 @@ class TapMasterBoard extends StatefulWidget {
 class _TapMasterBoardState extends State<TapMasterBoard>
     with TickerProviderStateMixin {
   final Map<TapBlock, AnimationController> _removeAnimations = {};
-  final Set<TapBlock> _bouncingBlocks = {}; // Blocks that are bouncing back
   TapBlock? _animatingBlock;
 
   // 3D rotation angles
@@ -40,63 +39,16 @@ class _TapMasterBoardState extends State<TapMasterBoard>
     super.dispose();
   }
 
-  /// Check if there's a block blocking the flight path
-  bool _isPathBlocked(TapBlock block) {
-    final activeBlocks = widget.puzzle.blocks.where((b) => !b.isRemoved && b != block).toList();
-
-    for (final other in activeBlocks) {
-      // Only check blocks at the SAME Y level (horizontal flight path)
-      if (other.y != block.y) continue;
-
-      // Check if there's a block in the flight path
-      switch (block.direction) {
-        case ArrowDirection.up:
-          // Up direction: negative X direction
-          if (other.z == block.z && other.x < block.x) {
-            return true;
-          }
-          break;
-        case ArrowDirection.down:
-          // Down direction: positive X direction
-          if (other.z == block.z && other.x > block.x) {
-            return true;
-          }
-          break;
-        case ArrowDirection.left:
-          // Left direction: positive Z direction
-          if (other.x == block.x && other.z > block.z) {
-            return true;
-          }
-          break;
-        case ArrowDirection.right:
-          // Right direction: negative Z direction
-          if (other.x == block.x && other.z < block.z) {
-            return true;
-          }
-          break;
-      }
-    }
-
-    return false;
-  }
-
   void _handleBlockTap(TapBlock block) {
-    // Allow tapping any block - if path is blocked, it will bounce back
     if (_animatingBlock != null) return;
 
-    final isBlocked = _isPathBlocked(block);
-
     final controller = AnimationController(
-      duration: Duration(milliseconds: isBlocked ? 400 : 800),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
 
     _removeAnimations[block] = controller;
     _animatingBlock = block;
-
-    if (isBlocked) {
-      _bouncingBlocks.add(block);
-    }
 
     // Trigger rebuild on every frame for smooth animation
     controller.addListener(() {
@@ -105,20 +57,9 @@ class _TapMasterBoardState extends State<TapMasterBoard>
 
     controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        if (isBlocked) {
-          // Bounce back: reverse the animation
-          controller.reverse();
-        } else {
-          // Fly away: remove the block
-          widget.onBlockTap(block);
-          _animatingBlock = null;
-          controller.dispose();
-          _removeAnimations.remove(block);
-        }
-      } else if (status == AnimationStatus.dismissed) {
-        // Bounce animation completed (returned to original position)
+        // Fly away complete: remove the block
+        widget.onBlockTap(block);
         _animatingBlock = null;
-        _bouncingBlocks.remove(block);
         controller.dispose();
         _removeAnimations.remove(block);
       }
@@ -163,7 +104,6 @@ class _TapMasterBoardState extends State<TapMasterBoard>
               puzzle: widget.puzzle,
               tappableBlocks: widget.tappableBlocks,
               removeAnimations: _removeAnimations,
-              bouncingBlocks: _bouncingBlocks,
               rotationX: _rotationX,
               rotationY: _rotationY,
             ),
@@ -267,7 +207,6 @@ class _TapMasterPainter extends CustomPainter {
   final TapMasterPuzzle puzzle;
   final Set<TapBlock> tappableBlocks;
   final Map<TapBlock, AnimationController> removeAnimations;
-  final Set<TapBlock> bouncingBlocks;
   final double rotationX;
   final double rotationY;
 
@@ -275,7 +214,6 @@ class _TapMasterPainter extends CustomPainter {
     required this.puzzle,
     required this.tappableBlocks,
     required this.removeAnimations,
-    required this.bouncingBlocks,
     required this.rotationX,
     required this.rotationY,
   });
@@ -344,19 +282,14 @@ class _TapMasterPainter extends CustomPainter {
     double by = block.y - cy;
     double bz = block.z - cz;
 
-    // Apply fly-away or bounce animation based on arrow direction
+    // Apply fly-away animation based on arrow direction
     if (animValue > 0) {
-      final isBouncing = bouncingBlocks.contains(block);
+      // Use easeIn curve for accelerating motion
+      final curvedValue = Curves.easeInQuad.transform(animValue);
 
-      // Apply different curves for bouncing vs flying
-      final curvedValue = isBouncing
-          ? Curves.easeOutQuad.transform(animValue) // Decelerate when bouncing
-          : Curves.easeInQuad.transform(animValue); // Accelerate when flying away
-
-      // Bounce: short distance (0.5 block), Fly: full grid + 1 block
-      final moveDistance = isBouncing ? 0.5 : 1.0;
-      final gridSizeX = isBouncing ? moveDistance : (puzzle.gridWidth + 1.0);
-      final gridSizeZ = isBouncing ? moveDistance : (puzzle.gridDepth + 1.0);
+      // Fly distance: full grid + 1 block
+      final gridSizeX = puzzle.gridWidth + 1.0;
+      final gridSizeZ = puzzle.gridDepth + 1.0;
 
       switch (block.direction) {
         case ArrowDirection.up:
@@ -633,7 +566,6 @@ class _TapMasterPainter extends CustomPainter {
     return oldDelegate.puzzle != puzzle ||
         oldDelegate.tappableBlocks != tappableBlocks ||
         oldDelegate.removeAnimations.length != removeAnimations.length ||
-        oldDelegate.bouncingBlocks.length != bouncingBlocks.length ||
         oldDelegate.rotationX != rotationX ||
         oldDelegate.rotationY != rotationY ||
         removeAnimations.values.any((c) => c.isAnimating);
