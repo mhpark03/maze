@@ -39,11 +39,11 @@ extension TapMasterDifficultyExtension on TapMasterDifficulty {
   int get maxHeight {
     switch (this) {
       case TapMasterDifficulty.easy:
-        return 5;
+        return 6;
       case TapMasterDifficulty.medium:
-        return 7;
-      case TapMasterDifficulty.hard:
         return 9;
+      case TapMasterDifficulty.hard:
+        return 12;
     }
   }
 

@@ -237,10 +237,26 @@ class _BoardMetrics {
   });
 
   static _BoardMetrics calculate(Size size, TapMasterPuzzle puzzle, double rotX, double rotY) {
-    final maxDim = math.max(puzzle.gridWidth, math.max(puzzle.gridDepth, puzzle.maxHeight)).toDouble();
+    final gridW = puzzle.gridWidth.toDouble();
+    final gridD = puzzle.gridDepth.toDouble();
+    final gridH = puzzle.maxHeight.toDouble();
 
-    final availableSize = math.min(size.width, size.height) * 0.7;
-    final cubeSize = availableSize / (maxDim * 1.8);
+    // Calculate the maximum extent of the 3D structure when rotated
+    // Use diagonal of the bounding box for worst case rotation
+    final diagonalXZ = math.sqrt(gridW * gridW + gridD * gridD);
+    final maxHorizontalExtent = diagonalXZ;
+    final maxVerticalExtent = math.sqrt(diagonalXZ * diagonalXZ + gridH * gridH);
+
+    // Use more screen space - 85% of available area
+    final availableWidth = size.width * 0.85;
+    final availableHeight = size.height * 0.85;
+
+    // Calculate cube size that fits in both dimensions
+    final cubeSizeByWidth = availableWidth / (maxHorizontalExtent * 1.2);
+    final cubeSizeByHeight = availableHeight / (maxVerticalExtent * 1.2);
+
+    // Use the smaller to ensure fit, but don't go too small
+    final cubeSize = math.min(cubeSizeByWidth, cubeSizeByHeight);
 
     return _BoardMetrics(
       cubeSize: cubeSize,
