@@ -125,23 +125,23 @@ class _TapMasterBoardState extends State<TapMasterBoard>
           },
           onPanUpdate: (details) {
             final delta = details.localPosition - (_dragStart ?? details.localPosition);
-            if (delta.distance > 5) {
+            if (delta.distance > 10) {
               _isDragging = true;
             }
 
-            setState(() {
-              _rotationY -= details.delta.dx * 0.01;
-              _rotationX += details.delta.dy * 0.01;
-              // 360도 회전 가능 (제한 없음)
-            });
+            if (_isDragging) {
+              setState(() {
+                _rotationY -= details.delta.dx * 0.01;
+                _rotationX += details.delta.dy * 0.01;
+              });
+            }
           },
           onPanEnd: (details) {
-            _dragStart = null;
-          },
-          onTapUp: (details) {
-            if (!_isDragging) {
-              _onTapDown(details.localPosition, constraints);
+            // If not dragging (small movement), treat as tap
+            if (!_isDragging && _dragStart != null) {
+              _onTapDown(_dragStart!, constraints);
             }
+            _dragStart = null;
             _isDragging = false;
           },
           child: CustomPaint(
