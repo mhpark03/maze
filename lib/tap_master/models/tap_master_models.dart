@@ -16,34 +16,34 @@ extension TapMasterDifficultyExtension on TapMasterDifficulty {
   int get gridWidth {
     switch (this) {
       case TapMasterDifficulty.easy:
-        return 4;
+        return 3;
       case TapMasterDifficulty.medium:
-        return 5;
+        return 4;
       case TapMasterDifficulty.hard:
-        return 6;
+        return 5;
     }
   }
 
   int get gridDepth {
     switch (this) {
       case TapMasterDifficulty.easy:
-        return 4;
+        return 3;
       case TapMasterDifficulty.medium:
-        return 5;
+        return 4;
       case TapMasterDifficulty.hard:
-        return 6;
+        return 5;
     }
   }
 
-  /// Maximum stack height
+  /// Maximum stack height (higher than width/depth)
   int get maxHeight {
     switch (this) {
       case TapMasterDifficulty.easy:
-        return 4;
-      case TapMasterDifficulty.medium:
         return 5;
+      case TapMasterDifficulty.medium:
+        return 7;
       case TapMasterDifficulty.hard:
-        return 6;
+        return 9;
     }
   }
 
@@ -51,11 +51,11 @@ extension TapMasterDifficultyExtension on TapMasterDifficulty {
   (int, int) get blockCountRange {
     switch (this) {
       case TapMasterDifficulty.easy:
-        return (20, 30);
+        return (15, 25);
       case TapMasterDifficulty.medium:
-        return (40, 60);
+        return (35, 50);
       case TapMasterDifficulty.hard:
-        return (70, 100);
+        return (65, 90);
     }
   }
 }
