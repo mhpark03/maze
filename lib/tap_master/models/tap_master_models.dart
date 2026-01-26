@@ -1,11 +1,15 @@
 import 'dart:ui';
 
-/// Direction of the arrow on each block (4 directions only, parallel to faces)
+/// Direction of the arrow on each block (6 directions - all axes)
 enum ArrowDirection {
-  up,    // Toward back-left (isometric up)
-  down,  // Toward front-right (isometric down)
-  left,  // Toward back-right (isometric left)
-  right, // Toward front-left (isometric right)
+  // Horizontal directions (X-Z plane)
+  north,  // -X direction (toward back-left)
+  south,  // +X direction (toward front-right)
+  east,   // -Z direction (toward back-right)
+  west,   // +Z direction (toward front-left)
+  // Vertical directions (Y axis)
+  skyward,    // +Y direction (upward)
+  groundward, // -Y direction (downward)
 }
 
 /// Difficulty levels for TapMaster
@@ -47,15 +51,18 @@ extension TapMasterDifficultyExtension on TapMasterDifficulty {
     }
   }
 
-  /// Total block count range
+  /// Total block count range (approximately 80% of total grid capacity)
+  /// Easy: 3x3x6=54, 80%=43
+  /// Medium: 4x4x9=144, 80%=115
+  /// Hard: 5x5x12=300, 80%=240
   (int, int) get blockCountRange {
     switch (this) {
       case TapMasterDifficulty.easy:
-        return (15, 25);
+        return (38, 48);
       case TapMasterDifficulty.medium:
-        return (35, 50);
+        return (100, 125);
       case TapMasterDifficulty.hard:
-        return (65, 90);
+        return (220, 260);
     }
   }
 }

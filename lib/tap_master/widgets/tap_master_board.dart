@@ -47,21 +47,24 @@ class _TapMasterBoardState extends State<TapMasterBoard>
         .toList();
 
     for (final other in activeBlocks) {
-      // Only check blocks at the same Y level
-      if (other.y != block.y) continue;
-
       switch (block.direction) {
-        case ArrowDirection.up: // -X direction
-          if (other.z == block.z && other.x < block.x) return true;
+        case ArrowDirection.north: // -X direction
+          if (other.y == block.y && other.z == block.z && other.x < block.x) return true;
           break;
-        case ArrowDirection.down: // +X direction
-          if (other.z == block.z && other.x > block.x) return true;
+        case ArrowDirection.south: // +X direction
+          if (other.y == block.y && other.z == block.z && other.x > block.x) return true;
           break;
-        case ArrowDirection.left: // +Z direction
-          if (other.x == block.x && other.z > block.z) return true;
+        case ArrowDirection.west: // +Z direction
+          if (other.y == block.y && other.x == block.x && other.z > block.z) return true;
           break;
-        case ArrowDirection.right: // -Z direction
-          if (other.x == block.x && other.z < block.z) return true;
+        case ArrowDirection.east: // -Z direction
+          if (other.y == block.y && other.x == block.x && other.z < block.z) return true;
+          break;
+        case ArrowDirection.skyward: // +Y direction
+          if (other.x == block.x && other.z == block.z && other.y > block.y) return true;
+          break;
+        case ArrowDirection.groundward: // -Y direction
+          if (other.x == block.x && other.z == block.z && other.y < block.y) return true;
           break;
       }
     }
@@ -357,22 +360,29 @@ class _TapMasterPainter extends CustomPainter {
           : Curves.easeInQuad.transform(animValue);
 
       // Bounce: 0.5 block distance, Fly: full grid + 1 block
-      final distance = isBouncing ? 0.5 : 1.0;
-      final gridSizeX = isBouncing ? distance : (puzzle.gridWidth + 1.0);
-      final gridSizeZ = isBouncing ? distance : (puzzle.gridDepth + 1.0);
+      final bounceDistance = 0.5;
+      final gridSizeX = isBouncing ? bounceDistance : (puzzle.gridWidth + 1.0);
+      final gridSizeZ = isBouncing ? bounceDistance : (puzzle.gridDepth + 1.0);
+      final gridSizeY = isBouncing ? bounceDistance : (puzzle.maxHeight + 1.0);
 
       switch (block.direction) {
-        case ArrowDirection.up:
+        case ArrowDirection.north: // -X
           bx -= gridSizeX * curvedValue;
           break;
-        case ArrowDirection.down:
+        case ArrowDirection.south: // +X
           bx += gridSizeX * curvedValue;
           break;
-        case ArrowDirection.left:
+        case ArrowDirection.west: // +Z
           bz += gridSizeZ * curvedValue;
           break;
-        case ArrowDirection.right:
+        case ArrowDirection.east: // -Z
           bz -= gridSizeZ * curvedValue;
+          break;
+        case ArrowDirection.skyward: // +Y
+          by += gridSizeY * curvedValue;
+          break;
+        case ArrowDirection.groundward: // -Y
+          by -= gridSizeY * curvedValue;
           break;
       }
     }
@@ -400,12 +410,12 @@ class _TapMasterPainter extends CustomPainter {
     // Define faces with vertex indices and their normals for visibility check
     // Face: [v0, v1, v2, v3], normal direction
     final faces = [
-      ([4, 5, 6, 7], (0.0, 1.0, 0.0)),  // Top face
-      ([0, 3, 2, 1], (0.0, -1.0, 0.0)), // Bottom face
-      ([0, 1, 5, 4], (0.0, 0.0, -1.0)), // Back face
-      ([2, 3, 7, 6], (0.0, 0.0, 1.0)),  // Front face
-      ([0, 4, 7, 3], (-1.0, 0.0, 0.0)), // Left face
-      ([1, 2, 6, 5], (1.0, 0.0, 0.0)),  // Right face
+      ([4, 5, 6, 7], (0.0, 1.0, 0.0)),  // 0: Top face
+      ([0, 3, 2, 1], (0.0, -1.0, 0.0)), // 1: Bottom face
+      ([0, 1, 5, 4], (0.0, 0.0, -1.0)), // 2: Back face (-Z)
+      ([2, 3, 7, 6], (0.0, 0.0, 1.0)),  // 3: Front face (+Z)
+      ([0, 4, 7, 3], (-1.0, 0.0, 0.0)), // 4: Left face (-X)
+      ([1, 2, 6, 5], (1.0, 0.0, 0.0)),  // 5: Right face (+X)
     ];
 
     final faceColors = [
@@ -446,17 +456,7 @@ class _TapMasterPainter extends CustomPainter {
       canvas.drawPath(path, edgePaint);
 
       // Determine which faces should show arrows based on direction
-      // Each block shows arrow on ONE face type only:
-      // - left/right arrows: TOP face only
-      // - up/down arrows: SIDE faces only (front/back)
-      bool shouldDrawArrow = false;
-      if (i == 0 && (block.direction == ArrowDirection.left || block.direction == ArrowDirection.right)) {
-        // Top face shows left/right arrows only
-        shouldDrawArrow = true;
-      } else if ((i == 2 || i == 3) && (block.direction == ArrowDirection.up || block.direction == ArrowDirection.down)) {
-        // Front/Back faces show up/down arrows only
-        shouldDrawArrow = true;
-      }
+      bool shouldDrawArrow = _shouldDrawArrowOnFace(block.direction, i);
 
       if (shouldDrawArrow) {
         _drawArrowOnFace(canvas, projected, indices, block.direction, isTappable, animValue, i);
@@ -469,6 +469,25 @@ class _TapMasterPainter extends CustomPainter {
           ..style = PaintingStyle.fill;
         canvas.drawPath(path, highlightPaint);
       }
+    }
+  }
+
+  bool _shouldDrawArrowOnFace(ArrowDirection direction, int faceIndex) {
+    // faceIndex: 0=Top, 1=Bottom, 2=Back, 3=Front, 4=Left, 5=Right
+    // Show arrow on both opposite faces so it's visible from any angle
+    switch (direction) {
+      case ArrowDirection.north: // -X: show on top and bottom faces
+        return faceIndex == 0 || faceIndex == 1;
+      case ArrowDirection.south: // +X: show on top and bottom faces
+        return faceIndex == 0 || faceIndex == 1;
+      case ArrowDirection.east: // -Z: show on top and bottom faces
+        return faceIndex == 0 || faceIndex == 1;
+      case ArrowDirection.west: // +Z: show on top and bottom faces
+        return faceIndex == 0 || faceIndex == 1;
+      case ArrowDirection.skyward: // +Y: show on front and back faces
+        return faceIndex == 2 || faceIndex == 3;
+      case ArrowDirection.groundward: // -Y: show on front and back faces
+        return faceIndex == 2 || faceIndex == 3;
     }
   }
 
@@ -493,140 +512,136 @@ class _TapMasterPainter extends CustomPainter {
     final mid23 = Offset((p2.dx + p3.dx) / 2, (p2.dy + p3.dy) / 2);
     final mid30 = Offset((p3.dx + p0.dx) / 2, (p3.dy + p0.dy) / 2);
 
-    Offset tip, tail;
+    Offset? tipMid, tailMid, perpMid1, perpMid2;
 
-    if (faceIndex == 0) {
-      // Top face [4,5,6,7]: 4=back-left, 5=back-right, 6=front-right, 7=front-left
-      // mid01 = back edge, mid12 = right edge, mid23 = front edge, mid30 = left edge
-      switch (direction) {
-        case ArrowDirection.up:    // Move -X (towards back-left)
-          tip = mid30;  // left edge
-          tail = mid12; // right edge
-          break;
-        case ArrowDirection.down:  // Move +X (towards front-right)
-          tip = mid12;  // right edge
-          tail = mid30; // left edge
-          break;
-        case ArrowDirection.left:  // Move +Z (towards front)
-          tip = mid23;  // front edge
-          tail = mid01; // back edge
-          break;
-        case ArrowDirection.right: // Move -Z (towards back)
-          tip = mid01;  // back edge
-          tail = mid23; // front edge
-          break;
-      }
-    } else if (faceIndex == 2 || faceIndex == 3) {
-      // Front face [2,3,7,6] or Back face [0,1,5,4]: show up/down arrows
-      // These faces are perpendicular to Z, arrows point in X direction
+    // Determine arrow direction and perpendicular based on face and direction
+    switch (faceIndex) {
+      case 0: // Top face [4,5,6,7]: mid01=back, mid12=right, mid23=front, mid30=left
+        if (direction == ArrowDirection.east) { // -Z (back)
+          tipMid = mid01; tailMid = mid23; perpMid1 = mid30; perpMid2 = mid12;
+        } else if (direction == ArrowDirection.west) { // +Z (front)
+          tipMid = mid23; tailMid = mid01; perpMid1 = mid30; perpMid2 = mid12;
+        } else if (direction == ArrowDirection.north) { // -X (left)
+          tipMid = mid30; tailMid = mid12; perpMid1 = mid01; perpMid2 = mid23;
+        } else if (direction == ArrowDirection.south) { // +X (right)
+          tipMid = mid12; tailMid = mid30; perpMid1 = mid01; perpMid2 = mid23;
+        }
+        break;
 
-      // Front face [2,3,7,6]: mid12 connects (3,7) at X=bx (left), mid30 connects (6,2) at X=bx+1 (right)
-      // Back face [0,1,5,4]: mid12 connects (1,5) at X=bx+1 (right), mid30 connects (4,0) at X=bx (left)
-      Offset leftEdge, rightEdge;
-      if (faceIndex == 3) {
-        // Front face: mid12 is left, mid30 is right
-        leftEdge = mid12;
-        rightEdge = mid30;
-      } else {
-        // Back face: mid12 is right, mid30 is left
-        leftEdge = mid30;
-        rightEdge = mid12;
-      }
+      case 1: // Bottom face [0,3,2,1]: mid01=left, mid12=front, mid23=right, mid30=back
+        if (direction == ArrowDirection.east) { // -Z (back)
+          tipMid = mid30; tailMid = mid12; perpMid1 = mid01; perpMid2 = mid23;
+        } else if (direction == ArrowDirection.west) { // +Z (front)
+          tipMid = mid12; tailMid = mid30; perpMid1 = mid01; perpMid2 = mid23;
+        } else if (direction == ArrowDirection.north) { // -X (left)
+          tipMid = mid01; tailMid = mid23; perpMid1 = mid12; perpMid2 = mid30;
+        } else if (direction == ArrowDirection.south) { // +X (right)
+          tipMid = mid23; tailMid = mid01; perpMid1 = mid12; perpMid2 = mid30;
+        }
+        break;
 
-      switch (direction) {
-        case ArrowDirection.up:    // Move -X (towards left in 3D)
-          tip = leftEdge;
-          tail = rightEdge;
-          break;
-        case ArrowDirection.down:  // Move +X (towards right in 3D)
-          tip = rightEdge;
-          tail = leftEdge;
-          break;
-        default:
-          return;
-      }
-    } else {
-      // Left face [0,4,7,3] or Right face [1,2,6,5]: show left/right arrows
-      // These faces are perpendicular to X, arrows point in Z direction
+      case 2: // Back face [0,1,5,4]: mid01=bottom, mid12=right, mid23=top, mid30=left
+        if (direction == ArrowDirection.north) { // -X (left)
+          tipMid = mid30; tailMid = mid12; perpMid1 = mid01; perpMid2 = mid23;
+        } else if (direction == ArrowDirection.south) { // +X (right)
+          tipMid = mid12; tailMid = mid30; perpMid1 = mid01; perpMid2 = mid23;
+        } else if (direction == ArrowDirection.skyward) { // +Y (up)
+          tipMid = mid23; tailMid = mid01; perpMid1 = mid30; perpMid2 = mid12;
+        } else if (direction == ArrowDirection.groundward) { // -Y (down)
+          tipMid = mid01; tailMid = mid23; perpMid1 = mid30; perpMid2 = mid12;
+        }
+        break;
 
-      // Left face [0,4,7,3]: back edge = mid01, front edge = mid23
-      // Right face [1,2,6,5]: back edge = mid30, front edge = mid12
-      Offset frontEdge, backEdge;
-      if (faceIndex == 4) {
-        // Left face
-        frontEdge = mid23;
-        backEdge = mid01;
-      } else {
-        // Right face
-        frontEdge = mid12;
-        backEdge = mid30;
-      }
+      case 3: // Front face [2,3,7,6]: mid01=bottom, mid12=left, mid23=top, mid30=right
+        if (direction == ArrowDirection.north) { // -X (left)
+          tipMid = mid12; tailMid = mid30; perpMid1 = mid01; perpMid2 = mid23;
+        } else if (direction == ArrowDirection.south) { // +X (right)
+          tipMid = mid30; tailMid = mid12; perpMid1 = mid01; perpMid2 = mid23;
+        } else if (direction == ArrowDirection.skyward) { // +Y (up)
+          tipMid = mid23; tailMid = mid01; perpMid1 = mid12; perpMid2 = mid30;
+        } else if (direction == ArrowDirection.groundward) { // -Y (down)
+          tipMid = mid01; tailMid = mid23; perpMid1 = mid12; perpMid2 = mid30;
+        }
+        break;
 
-      switch (direction) {
-        case ArrowDirection.left:  // Move +Z (towards front)
-          tip = frontEdge;
-          tail = backEdge;
-          break;
-        case ArrowDirection.right: // Move -Z (towards back)
-          tip = backEdge;
-          tail = frontEdge;
-          break;
-        default:
-          return;
-      }
+      case 4: // Left face [0,4,7,3]: mid01=back, mid12=top, mid23=front, mid30=bottom
+        if (direction == ArrowDirection.east) { // -Z (back)
+          tipMid = mid01; tailMid = mid23; perpMid1 = mid30; perpMid2 = mid12;
+        } else if (direction == ArrowDirection.west) { // +Z (front)
+          tipMid = mid23; tailMid = mid01; perpMid1 = mid30; perpMid2 = mid12;
+        } else if (direction == ArrowDirection.skyward) { // +Y (up)
+          tipMid = mid12; tailMid = mid30; perpMid1 = mid01; perpMid2 = mid23;
+        } else if (direction == ArrowDirection.groundward) { // -Y (down)
+          tipMid = mid30; tailMid = mid12; perpMid1 = mid01; perpMid2 = mid23;
+        }
+        break;
+
+      case 5: // Right face [1,2,6,5]: mid01=front, mid12=top, mid23=back, mid30=bottom
+        if (direction == ArrowDirection.east) { // -Z (back)
+          tipMid = mid23; tailMid = mid01; perpMid1 = mid30; perpMid2 = mid12;
+        } else if (direction == ArrowDirection.west) { // +Z (front)
+          tipMid = mid01; tailMid = mid23; perpMid1 = mid30; perpMid2 = mid12;
+        } else if (direction == ArrowDirection.skyward) { // +Y (up)
+          tipMid = mid12; tailMid = mid30; perpMid1 = mid01; perpMid2 = mid23;
+        } else if (direction == ArrowDirection.groundward) { // -Y (down)
+          tipMid = mid30; tailMid = mid12; perpMid1 = mid01; perpMid2 = mid23;
+        }
+        break;
     }
 
-    // Scale arrow to fit inside face - extend closer to edges
-    final arrowTip = Offset(
-      center.dx + (tip.dx - center.dx) * 0.75,
-      center.dy + (tip.dy - center.dy) * 0.75,
+    if (tipMid == null || tailMid == null || perpMid1 == null || perpMid2 == null) return;
+
+    // Scale positions relative to center
+    final tip = Offset(
+      center.dx + (tipMid.dx - center.dx) * 0.75,
+      center.dy + (tipMid.dy - center.dy) * 0.75,
     );
-    final arrowTail = Offset(
-      center.dx + (tail.dx - center.dx) * 0.3,
-      center.dy + (tail.dy - center.dy) * 0.3,
+    final tail = Offset(
+      center.dx + (tailMid.dx - center.dx) * 0.3,
+      center.dy + (tailMid.dy - center.dy) * 0.3,
     );
+
+    // Calculate perpendicular direction using face's actual edge (perspective-correct)
+    final perpDir = Offset(
+      (perpMid2.dx - perpMid1.dx),
+      (perpMid2.dy - perpMid1.dy),
+    );
+    final perpLen = math.sqrt(perpDir.dx * perpDir.dx + perpDir.dy * perpDir.dy);
+    if (perpLen == 0) return;
+    final perpUnit = Offset(perpDir.dx / perpLen, perpDir.dy / perpLen);
 
     final arrowColor = isTappable
         ? Colors.black.withValues(alpha: 0.85 * (1.0 - animValue))
         : Colors.black.withValues(alpha: 0.6 * (1.0 - animValue));
 
-    // Calculate arrow dimensions - larger head for better visibility
-    final faceSize = (p0 - p2).distance;
-    final headSize = faceSize * 0.25;
-    final bodyWidth = faceSize * 0.06;
+    // Arrow dimensions relative to face
+    final bodyWidth = perpLen * 0.12;
+    final headWidth = perpLen * 0.25;
+    final headLength = (tip - tail).distance * 0.35;
 
-    final arrowPath = _createArrowPath(arrowTail, arrowTip, headSize, bodyWidth);
-    canvas.drawPath(arrowPath, Paint()..color = arrowColor..style = PaintingStyle.fill);
-  }
+    // Calculate arrow points
+    final arrowDir = Offset(tip.dx - tail.dx, tip.dy - tail.dy);
+    final arrowLen = math.sqrt(arrowDir.dx * arrowDir.dx + arrowDir.dy * arrowDir.dy);
+    if (arrowLen == 0) return;
+    final arrowUnit = Offset(arrowDir.dx / arrowLen, arrowDir.dy / arrowLen);
 
-  Path _createArrowPath(Offset tail, Offset tip, double headSize, double bodyWidth) {
-    final dx = tip.dx - tail.dx;
-    final dy = tip.dy - tail.dy;
-    final len = math.sqrt(dx * dx + dy * dy);
-    if (len == 0) return Path();
+    final headBase = Offset(
+      tip.dx - arrowUnit.dx * headLength,
+      tip.dy - arrowUnit.dy * headLength,
+    );
 
-    final nx = dx / len;
-    final ny = dy / len;
-    final px = -ny;
-    final py = nx;
-
-    final headBaseX = tip.dx - nx * headSize;
-    final headBaseY = tip.dy - ny * headSize;
-
-    // Wider arrow head for better visibility
-    final headWidth = headSize * 0.7;
-
+    // Build arrow path using perspective-correct perpendicular
     final path = Path();
-    path.moveTo(tail.dx + px * bodyWidth, tail.dy + py * bodyWidth);
-    path.lineTo(headBaseX + px * bodyWidth, headBaseY + py * bodyWidth);
-    path.lineTo(headBaseX + px * headWidth, headBaseY + py * headWidth);
+    path.moveTo(tail.dx + perpUnit.dx * bodyWidth, tail.dy + perpUnit.dy * bodyWidth);
+    path.lineTo(headBase.dx + perpUnit.dx * bodyWidth, headBase.dy + perpUnit.dy * bodyWidth);
+    path.lineTo(headBase.dx + perpUnit.dx * headWidth, headBase.dy + perpUnit.dy * headWidth);
     path.lineTo(tip.dx, tip.dy);
-    path.lineTo(headBaseX - px * headWidth, headBaseY - py * headWidth);
-    path.lineTo(headBaseX - px * bodyWidth, headBaseY - py * bodyWidth);
-    path.lineTo(tail.dx - px * bodyWidth, tail.dy - py * bodyWidth);
+    path.lineTo(headBase.dx - perpUnit.dx * headWidth, headBase.dy - perpUnit.dy * headWidth);
+    path.lineTo(headBase.dx - perpUnit.dx * bodyWidth, headBase.dy - perpUnit.dy * bodyWidth);
+    path.lineTo(tail.dx - perpUnit.dx * bodyWidth, tail.dy - perpUnit.dy * bodyWidth);
     path.close();
 
-    return path;
+    canvas.drawPath(path, Paint()..color = arrowColor..style = PaintingStyle.fill);
   }
 
   Color _adjustBrightness(Color color, double factor) {
