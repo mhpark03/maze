@@ -80,7 +80,6 @@ class _TapMasterScreenState extends State<TapMasterScreen> {
 
   void _onBlockTap(TapBlock block) {
     if (_puzzle == null) return;
-    if (!_tappableBlocks.contains(block)) return;
 
     setState(() {
       _puzzle!.removeBlock(block);
