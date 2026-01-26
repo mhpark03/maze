@@ -46,12 +46,14 @@ class TapMasterGenerator {
       // Don't stack too high
       if (currentHeight >= maxHeight) continue;
 
-      // Create block at this position
+      // Create block at this position with a direction that can escape
+      final direction = _getEscapableDirection(x, z, currentHeight, gridWidth, gridDepth, blocks);
+
       final block = TapBlock(
         x: x,
         y: currentHeight,
         z: z,
-        direction: _randomDirection(),
+        direction: direction,
         color: _blockColors[_random.nextInt(_blockColors.length)],
       );
 
@@ -77,8 +79,54 @@ class TapMasterGenerator {
     );
   }
 
-  static ArrowDirection _randomDirection() {
-    final directions = ArrowDirection.values;
-    return directions[_random.nextInt(directions.length)];
+  /// Get a direction where the block can potentially escape
+  /// Prefers directions where there's no block in the path at the same Y level
+  static ArrowDirection _getEscapableDirection(
+    int x, int z, int y,
+    int gridWidth, int gridDepth,
+    List<TapBlock> existingBlocks,
+  ) {
+    // Shuffle directions to add randomness
+    final directions = List<ArrowDirection>.from(ArrowDirection.values)..shuffle(_random);
+
+    // Try to find a direction with clear path
+    for (final dir in directions) {
+      if (_hasEscapePath(x, z, y, dir, gridWidth, gridDepth, existingBlocks)) {
+        return dir;
+      }
+    }
+
+    // If no clear path found, return random (game is still playable with bounces)
+    return directions.first;
+  }
+
+  /// Check if there's a clear escape path in the given direction
+  static bool _hasEscapePath(
+    int x, int z, int y,
+    ArrowDirection direction,
+    int gridWidth, int gridDepth,
+    List<TapBlock> existingBlocks,
+  ) {
+    // Check if any existing block at the same Y level blocks the path
+    for (final other in existingBlocks) {
+      if (other.y != y) continue; // Only check same height
+
+      switch (direction) {
+        case ArrowDirection.up: // -X direction
+          if (other.z == z && other.x < x) return false;
+          break;
+        case ArrowDirection.down: // +X direction
+          if (other.z == z && other.x > x) return false;
+          break;
+        case ArrowDirection.left: // +Z direction
+          if (other.x == x && other.z > z) return false;
+          break;
+        case ArrowDirection.right: // -Z direction
+          if (other.x == x && other.z < z) return false;
+          break;
+      }
+    }
+
+    return true;
   }
 }

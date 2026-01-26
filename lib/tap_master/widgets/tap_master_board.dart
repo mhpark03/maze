@@ -40,41 +40,46 @@ class _TapMasterBoardState extends State<TapMasterBoard>
     super.dispose();
   }
 
-  /// Check if there's a block blocking the path in the arrow direction
+  /// Check if there's a block blocking the path or on top of this block
   bool _isPathBlocked(TapBlock block) {
     final activeBlocks = widget.puzzle.blocks.where((b) => !b.isRemoved && b != block).toList();
 
     for (final other in activeBlocks) {
-      bool isBlocking = false;
+      // Check if there's a block directly on top (can't move if supporting another block)
+      if (other.x == block.x && other.z == block.z && other.y > block.y) {
+        return true;
+      }
 
+      // Check if there's a block in the flight path (same Y level)
+      bool isInPath = false;
       switch (block.direction) {
         case ArrowDirection.up:
           // Up direction: negative X direction
           if (other.x < block.x && other.y == block.y && other.z == block.z) {
-            isBlocking = true;
+            isInPath = true;
           }
           break;
         case ArrowDirection.down:
           // Down direction: positive X direction
           if (other.x > block.x && other.y == block.y && other.z == block.z) {
-            isBlocking = true;
+            isInPath = true;
           }
           break;
         case ArrowDirection.left:
           // Left direction: positive Z direction
           if (other.z > block.z && other.y == block.y && other.x == block.x) {
-            isBlocking = true;
+            isInPath = true;
           }
           break;
         case ArrowDirection.right:
           // Right direction: negative Z direction
           if (other.z < block.z && other.y == block.y && other.x == block.x) {
-            isBlocking = true;
+            isInPath = true;
           }
           break;
       }
 
-      if (isBlocking) return true;
+      if (isInPath) return true;
     }
 
     return false;
