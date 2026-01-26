@@ -91,54 +91,74 @@ class TapMasterGenerator {
     );
   }
 
-  /// Get a direction where the block can potentially escape
-  /// Prefers directions where there's no block in the path at the same Y level
+  /// Get a direction that ensures the puzzle is solvable
+  /// Blocks in the same row/column at the same height should point towards the edge
   static ArrowDirection _getEscapableDirection(
     int x, int z, int y,
     int gridWidth, int gridDepth,
     List<({int x, int y, int z, Color color})> allBlocks,
   ) {
-    // Shuffle directions to add randomness
-    final directions = List<ArrowDirection>.from(ArrowDirection.values)..shuffle(_random);
+    // Find blocks in the same row (same Y, same Z) or column (same Y, same X)
+    final sameRowBlocks = allBlocks.where((b) => b.y == y && b.z == z && b.x != x).toList();
+    final sameColBlocks = allBlocks.where((b) => b.y == y && b.x == x && b.z != z).toList();
 
-    // Try to find a direction with clear path
-    for (final dir in directions) {
-      if (_hasEscapePath(x, z, y, dir, allBlocks)) {
-        return dir;
+    // Prefer direction towards the nearest edge to avoid deadlocks
+    final possibleDirections = <ArrowDirection>[];
+
+    // Check X-axis directions (up = -X, down = +X)
+    if (sameRowBlocks.isEmpty) {
+      // No blocks in same row, can go either X direction
+      possibleDirections.add(x <= gridWidth ~/ 2 ? ArrowDirection.up : ArrowDirection.down);
+    } else {
+      // There are blocks in the same row - point towards the nearest edge
+      final minX = sameRowBlocks.map((b) => b.x).reduce(min);
+      final maxX = sameRowBlocks.map((b) => b.x).reduce(max);
+
+      if (x <= minX) {
+        // This block is at or before the leftmost - point left (up = -X)
+        possibleDirections.add(ArrowDirection.up);
+      } else if (x >= maxX) {
+        // This block is at or after the rightmost - point right (down = +X)
+        possibleDirections.add(ArrowDirection.down);
       }
+      // If in the middle, we'll use Z direction instead
     }
 
-    // If no clear path found, return random (game is still playable with bounces)
-    return directions.first;
-  }
+    // Check Z-axis directions (left = +Z, right = -Z)
+    if (sameColBlocks.isEmpty) {
+      // No blocks in same column, can go either Z direction
+      possibleDirections.add(z <= gridDepth ~/ 2 ? ArrowDirection.right : ArrowDirection.left);
+    } else {
+      // There are blocks in the same column - point towards the nearest edge
+      final minZ = sameColBlocks.map((b) => b.z).reduce(min);
+      final maxZ = sameColBlocks.map((b) => b.z).reduce(max);
 
-  /// Check if there's a clear escape path in the given direction
-  static bool _hasEscapePath(
-    int x, int z, int y,
-    ArrowDirection direction,
-    List<({int x, int y, int z, Color color})> allBlocks,
-  ) {
-    // Check if any block at the same Y level blocks the path
-    for (final other in allBlocks) {
-      if (other.y != y) continue; // Only check same height
-      if (other.x == x && other.z == z) continue; // Skip self
-
-      switch (direction) {
-        case ArrowDirection.up: // -X direction
-          if (other.z == z && other.x < x) return false;
-          break;
-        case ArrowDirection.down: // +X direction
-          if (other.z == z && other.x > x) return false;
-          break;
-        case ArrowDirection.left: // +Z direction
-          if (other.x == x && other.z > z) return false;
-          break;
-        case ArrowDirection.right: // -Z direction
-          if (other.x == x && other.z < z) return false;
-          break;
+      if (z <= minZ) {
+        // This block is at or before the front - point back (right = -Z)
+        possibleDirections.add(ArrowDirection.right);
+      } else if (z >= maxZ) {
+        // This block is at or after the back - point front (left = +Z)
+        possibleDirections.add(ArrowDirection.left);
       }
+      // If in the middle, we'll use X direction instead
     }
 
-    return true;
+    // If we have possible directions, pick one randomly
+    if (possibleDirections.isNotEmpty) {
+      return possibleDirections[_random.nextInt(possibleDirections.length)];
+    }
+
+    // Fallback: point towards nearest edge
+    final distToLeft = x;
+    final distToRight = gridWidth - 1 - x;
+    final distToFront = z;
+    final distToBack = gridDepth - 1 - z;
+
+    final minDist = [distToLeft, distToRight, distToFront, distToBack].reduce(min);
+
+    if (minDist == distToLeft) return ArrowDirection.up;
+    if (minDist == distToRight) return ArrowDirection.down;
+    if (minDist == distToFront) return ArrowDirection.right;
+    return ArrowDirection.left;
   }
 }
