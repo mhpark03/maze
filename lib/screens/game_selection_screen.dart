@@ -11,6 +11,8 @@ import '../parking_jam/parking_screen.dart';
 import '../parking_jam/models/parking_models.dart';
 import '../car_escape/car_escape_screen.dart';
 import '../car_escape/models/car_escape_models.dart';
+import '../tap_master/tap_master_screen.dart';
+import '../tap_master/models/tap_master_models.dart';
 
 class GameSelectionScreen extends StatefulWidget {
   const GameSelectionScreen({super.key});
@@ -62,13 +64,13 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // Calculate tile size to fit all 4 tiles on screen
+                  // Calculate tile size to fit all 6 tiles on screen (3 rows x 2 cols)
                   final padding = 16.0;
                   final spacing = 12.0;
                   final availableWidth = constraints.maxWidth - (padding * 2) - spacing;
-                  final availableHeight = constraints.maxHeight - (padding * 2) - spacing;
+                  final availableHeight = constraints.maxHeight - (padding * 2) - (spacing * 2);
                   final tileWidth = availableWidth / 2;
-                  final tileHeight = availableHeight / 2;
+                  final tileHeight = availableHeight / 3;
                   // Use the smaller ratio to ensure tiles fit both dimensions
                   final aspectRatio = tileWidth / tileHeight;
 
@@ -108,6 +110,13 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                           icon: Icons.directions_car,
                           color: Colors.green,
                           onTap: () => _showCarEscapeDifficultyDialog(context, l10n),
+                        ),
+                        _buildGameTile(
+                          context: context,
+                          title: l10n.tapMaster,
+                          icon: Icons.touch_app,
+                          color: const Color(0xFFFF6B6B),
+                          onTap: () => _showTapMasterDifficultyDialog(context, l10n),
                         ),
                       ],
                     ),
@@ -423,6 +432,62 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => CarEscapeScreen(difficulty: difficulty),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTapMasterDifficultyDialog(BuildContext context, AppLocalizations l10n) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2D2D44),
+        title: Text(l10n.selectDifficulty, style: const TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildTapMasterDifficultyOption(
+              context: context,
+              title: '${l10n.easy} (4x4x4)',
+              difficulty: TapMasterDifficulty.easy,
+            ),
+            _buildTapMasterDifficultyOption(
+              context: context,
+              title: '${l10n.normal} (5x5x5)',
+              difficulty: TapMasterDifficulty.medium,
+            ),
+            _buildTapMasterDifficultyOption(
+              context: context,
+              title: '${l10n.hard} (6x6x6)',
+              difficulty: TapMasterDifficulty.hard,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.close, style: const TextStyle(color: Color(0xFFFF6B6B))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTapMasterDifficultyOption({
+    required BuildContext context,
+    required String title,
+    required TapMasterDifficulty difficulty,
+  }) {
+    return ListTile(
+      title: Text(title, style: const TextStyle(color: Colors.white70)),
+      leading: const Icon(Icons.touch_app, color: Color(0xFFFF6B6B)),
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TapMasterScreen(difficulty: difficulty),
           ),
         );
       },

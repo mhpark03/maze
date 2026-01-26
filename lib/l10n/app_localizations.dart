@@ -105,6 +105,19 @@ class AppLocalizations {
       'carEscapeRight': 'Right',
       'carEscapeUturn': 'U-Turn',
       'carEscapeIntersections': 'intersections',
+      // TapMaster strings
+      'tapMaster': 'Tap Master',
+      'tapMasterRules': '• Tap blocks that are not blocked by other blocks\n• A block is tappable if no other block is in front of it\n• The highlighted blocks can be tapped\n• Remove all blocks to win!',
+      'taps': 'Taps',
+      'remaining': 'Left',
+      'tapHighlightedBlock': 'Tap one of the highlighted blocks!',
+      'congratulations': 'Congratulations!',
+      'moves': 'Moves',
+      'hints': 'Hints',
+      'home': 'Home',
+      'playAgain': 'Play Again',
+      'watchAdForHint': 'Watch an ad to get a hint?',
+      'watchAd': 'Watch Ad',
     },
     'ko': {
       // Arrow Maze strings
@@ -198,6 +211,19 @@ class AppLocalizations {
       'carEscapeRight': '우회전',
       'carEscapeUturn': '유턴',
       'carEscapeIntersections': '교차로',
+      // TapMaster strings
+      'tapMaster': '탭 마스터',
+      'tapMasterRules': '• 다른 블록에 가려지지 않은 블록을 탭하세요\n• 앞에 다른 블록이 없으면 탭할 수 있습니다\n• 밝게 표시된 블록을 탭할 수 있습니다\n• 모든 블록을 제거하면 승리!',
+      'taps': '탭',
+      'remaining': '남음',
+      'tapHighlightedBlock': '밝게 표시된 블록을 탭하세요!',
+      'congratulations': '축하합니다!',
+      'moves': '이동',
+      'hints': '힌트',
+      'home': '홈',
+      'playAgain': '다시 하기',
+      'watchAdForHint': '광고를 시청하고 힌트를 받으시겠습니까?',
+      'watchAd': '광고 보기',
     },
     'ja': {
       // Arrow Maze strings
@@ -291,6 +317,19 @@ class AppLocalizations {
       'carEscapeRight': '右折',
       'carEscapeUturn': 'Uターン',
       'carEscapeIntersections': '交差点',
+      // TapMaster strings
+      'tapMaster': 'タップマスター',
+      'tapMasterRules': '• 他のブロックに隠れていないブロックをタップしてください\n• 前に他のブロックがなければタップできます\n• ハイライトされたブロックをタップできます\n• すべてのブロックを除去すると勝利！',
+      'taps': 'タップ',
+      'remaining': '残り',
+      'tapHighlightedBlock': 'ハイライトされたブロックをタップしてください！',
+      'congratulations': 'おめでとうございます！',
+      'moves': '移動',
+      'hints': 'ヒント',
+      'home': 'ホーム',
+      'playAgain': 'もう一度',
+      'watchAdForHint': '広告を見てヒントを取得しますか？',
+      'watchAd': '広告を見る',
     },
     'zh': {
       // Arrow Maze strings
@@ -384,6 +423,19 @@ class AppLocalizations {
       'carEscapeRight': '右转',
       'carEscapeUturn': '掉头',
       'carEscapeIntersections': '交叉路口',
+      // TapMaster strings
+      'tapMaster': '点击大师',
+      'tapMasterRules': '• 点击没有被其他方块遮挡的方块\n• 前面没有其他方块时可以点击\n• 高亮显示的方块可以点击\n• 移除所有方块即可获胜！',
+      'taps': '点击',
+      'remaining': '剩余',
+      'tapHighlightedBlock': '点击高亮显示的方块！',
+      'congratulations': '恭喜！',
+      'moves': '移动',
+      'hints': '提示',
+      'home': '主页',
+      'playAgain': '再玩一次',
+      'watchAdForHint': '观看广告获取提示？',
+      'watchAd': '观看广告',
     },
   };
 
@@ -481,6 +533,20 @@ class AppLocalizations {
   String get carEscapeRight => _localizedValues[locale.languageCode]!['carEscapeRight']!;
   String get carEscapeUturn => _localizedValues[locale.languageCode]!['carEscapeUturn']!;
   String get carEscapeIntersections => _localizedValues[locale.languageCode]!['carEscapeIntersections']!;
+
+  // TapMaster getters
+  String get tapMaster => _localizedValues[locale.languageCode]!['tapMaster']!;
+  String get tapMasterRules => _localizedValues[locale.languageCode]!['tapMasterRules']!;
+  String get taps => _localizedValues[locale.languageCode]!['taps']!;
+  String get remaining => _localizedValues[locale.languageCode]!['remaining']!;
+  String get tapHighlightedBlock => _localizedValues[locale.languageCode]!['tapHighlightedBlock']!;
+  String get congratulations => _localizedValues[locale.languageCode]!['congratulations']!;
+  String get moves => _localizedValues[locale.languageCode]!['moves']!;
+  String get hints => _localizedValues[locale.languageCode]!['hints']!;
+  String get home => _localizedValues[locale.languageCode]!['home']!;
+  String get playAgain => _localizedValues[locale.languageCode]!['playAgain']!;
+  String get watchAdForHint => _localizedValues[locale.languageCode]!['watchAdForHint']!;
+  String get watchAd => _localizedValues[locale.languageCode]!['watchAd']!;
 
   // Methods with parameters
   String tapArrow(int count) =>
