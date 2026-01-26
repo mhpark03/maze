@@ -560,24 +560,24 @@ class _TapMasterPainter extends CustomPainter {
       }
     }
 
-    // Scale arrow to fit inside face
+    // Scale arrow to fit inside face - extend closer to edges
     final arrowTip = Offset(
-      center.dx + (tip.dx - center.dx) * 0.6,
-      center.dy + (tip.dy - center.dy) * 0.6,
+      center.dx + (tip.dx - center.dx) * 0.75,
+      center.dy + (tip.dy - center.dy) * 0.75,
     );
     final arrowTail = Offset(
-      center.dx + (tail.dx - center.dx) * 0.4,
-      center.dy + (tail.dy - center.dy) * 0.4,
+      center.dx + (tail.dx - center.dx) * 0.3,
+      center.dy + (tail.dy - center.dy) * 0.3,
     );
 
     final arrowColor = isTappable
-        ? Colors.black.withValues(alpha: 0.8 * (1.0 - animValue))
-        : Colors.black.withValues(alpha: 0.5 * (1.0 - animValue));
+        ? Colors.black.withValues(alpha: 0.85 * (1.0 - animValue))
+        : Colors.black.withValues(alpha: 0.6 * (1.0 - animValue));
 
-    // Calculate arrow dimensions based on face size
+    // Calculate arrow dimensions - larger head for better visibility
     final faceSize = (p0 - p2).distance;
-    final headSize = faceSize * 0.15;
-    final bodyWidth = faceSize * 0.05;
+    final headSize = faceSize * 0.25;
+    final bodyWidth = faceSize * 0.06;
 
     final arrowPath = _createArrowPath(arrowTail, arrowTip, headSize, bodyWidth);
     canvas.drawPath(arrowPath, Paint()..color = arrowColor..style = PaintingStyle.fill);
@@ -597,12 +597,15 @@ class _TapMasterPainter extends CustomPainter {
     final headBaseX = tip.dx - nx * headSize;
     final headBaseY = tip.dy - ny * headSize;
 
+    // Wider arrow head for better visibility
+    final headWidth = headSize * 0.7;
+
     final path = Path();
     path.moveTo(tail.dx + px * bodyWidth, tail.dy + py * bodyWidth);
     path.lineTo(headBaseX + px * bodyWidth, headBaseY + py * bodyWidth);
-    path.lineTo(headBaseX + px * headSize * 0.5, headBaseY + py * headSize * 0.5);
+    path.lineTo(headBaseX + px * headWidth, headBaseY + py * headWidth);
     path.lineTo(tip.dx, tip.dy);
-    path.lineTo(headBaseX - px * headSize * 0.5, headBaseY - py * headSize * 0.5);
+    path.lineTo(headBaseX - px * headWidth, headBaseY - py * headWidth);
     path.lineTo(headBaseX - px * bodyWidth, headBaseY - py * bodyWidth);
     path.lineTo(tail.dx - px * bodyWidth, tail.dy - py * bodyWidth);
     path.close();
