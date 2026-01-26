@@ -40,46 +40,41 @@ class _TapMasterBoardState extends State<TapMasterBoard>
     super.dispose();
   }
 
-  /// Check if there's a block blocking the path or on top of this block
+  /// Check if there's a block blocking the flight path
   bool _isPathBlocked(TapBlock block) {
     final activeBlocks = widget.puzzle.blocks.where((b) => !b.isRemoved && b != block).toList();
 
     for (final other in activeBlocks) {
-      // Check if there's a block directly on top (can't move if supporting another block)
-      if (other.x == block.x && other.z == block.z && other.y > block.y) {
-        return true;
-      }
+      // Only check blocks at the SAME Y level (horizontal flight path)
+      if (other.y != block.y) continue;
 
-      // Check if there's a block in the flight path (same Y level)
-      bool isInPath = false;
+      // Check if there's a block in the flight path
       switch (block.direction) {
         case ArrowDirection.up:
           // Up direction: negative X direction
-          if (other.x < block.x && other.y == block.y && other.z == block.z) {
-            isInPath = true;
+          if (other.z == block.z && other.x < block.x) {
+            return true;
           }
           break;
         case ArrowDirection.down:
           // Down direction: positive X direction
-          if (other.x > block.x && other.y == block.y && other.z == block.z) {
-            isInPath = true;
+          if (other.z == block.z && other.x > block.x) {
+            return true;
           }
           break;
         case ArrowDirection.left:
           // Left direction: positive Z direction
-          if (other.z > block.z && other.y == block.y && other.x == block.x) {
-            isInPath = true;
+          if (other.x == block.x && other.z > block.z) {
+            return true;
           }
           break;
         case ArrowDirection.right:
           // Right direction: negative Z direction
-          if (other.z < block.z && other.y == block.y && other.x == block.x) {
-            isInPath = true;
+          if (other.x == block.x && other.z < block.z) {
+            return true;
           }
           break;
       }
-
-      if (isInPath) return true;
     }
 
     return false;

@@ -34,9 +34,10 @@ class TapMasterGenerator {
       (_) => List.filled(gridDepth, 0),
     );
 
-    // Generate blocks column by column, building up from bottom
+    // Step 1: Generate block positions first (without directions)
+    final blockPositions = <({int x, int y, int z, Color color})>[];
     int attempts = 0;
-    while (blocks.length < targetBlockCount && attempts < targetBlockCount * 3) {
+    while (blockPositions.length < targetBlockCount && attempts < targetBlockCount * 3) {
       attempts++;
 
       final x = _random.nextInt(gridWidth);
@@ -46,19 +47,30 @@ class TapMasterGenerator {
       // Don't stack too high
       if (currentHeight >= maxHeight) continue;
 
-      // Create block at this position with a direction that can escape
-      final direction = _getEscapableDirection(x, z, currentHeight, gridWidth, gridDepth, blocks);
-
-      final block = TapBlock(
+      blockPositions.add((
         x: x,
         y: currentHeight,
         z: z,
-        direction: direction,
         color: _blockColors[_random.nextInt(_blockColors.length)],
+      ));
+      heightMap[x][z] = currentHeight + 1;
+    }
+
+    // Step 2: Assign directions after all blocks are placed
+    for (final pos in blockPositions) {
+      final direction = _getEscapableDirection(
+        pos.x, pos.z, pos.y,
+        gridWidth, gridDepth,
+        blockPositions,
       );
 
-      blocks.add(block);
-      heightMap[x][z] = currentHeight + 1;
+      blocks.add(TapBlock(
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
+        direction: direction,
+        color: pos.color,
+      ));
     }
 
     // Sort blocks for proper rendering order (back to front, bottom to top)
@@ -84,14 +96,14 @@ class TapMasterGenerator {
   static ArrowDirection _getEscapableDirection(
     int x, int z, int y,
     int gridWidth, int gridDepth,
-    List<TapBlock> existingBlocks,
+    List<({int x, int y, int z, Color color})> allBlocks,
   ) {
     // Shuffle directions to add randomness
     final directions = List<ArrowDirection>.from(ArrowDirection.values)..shuffle(_random);
 
     // Try to find a direction with clear path
     for (final dir in directions) {
-      if (_hasEscapePath(x, z, y, dir, gridWidth, gridDepth, existingBlocks)) {
+      if (_hasEscapePath(x, z, y, dir, allBlocks)) {
         return dir;
       }
     }
@@ -104,12 +116,12 @@ class TapMasterGenerator {
   static bool _hasEscapePath(
     int x, int z, int y,
     ArrowDirection direction,
-    int gridWidth, int gridDepth,
-    List<TapBlock> existingBlocks,
+    List<({int x, int y, int z, Color color})> allBlocks,
   ) {
-    // Check if any existing block at the same Y level blocks the path
-    for (final other in existingBlocks) {
+    // Check if any block at the same Y level blocks the path
+    for (final other in allBlocks) {
       if (other.y != y) continue; // Only check same height
+      if (other.x == x && other.z == z) continue; // Skip self
 
       switch (direction) {
         case ArrowDirection.up: // -X direction
