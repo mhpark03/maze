@@ -454,12 +454,12 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
             ),
             _buildTapMasterDifficultyOption(
               context: context,
-              title: '${l10n.normal} (4×4×9)',
+              title: '${l10n.normal} (5×5×10)',
               difficulty: TapMasterDifficulty.medium,
             ),
             _buildTapMasterDifficultyOption(
               context: context,
-              title: '${l10n.hard} (5×5×12)',
+              title: '${l10n.hard} (7×7×14)',
               difficulty: TapMasterDifficulty.hard,
             ),
           ],

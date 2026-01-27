@@ -6,12 +6,14 @@ class TapMasterBoard extends StatefulWidget {
   final TapMasterPuzzle puzzle;
   final Function(TapBlock) onBlockTap;
   final Set<TapBlock> tappableBlocks;
+  final TapBlock? hintBlock;
 
   const TapMasterBoard({
     super.key,
     required this.puzzle,
     required this.onBlockTap,
     required this.tappableBlocks,
+    this.hintBlock,
   });
 
   @override
@@ -134,8 +136,8 @@ class _TapMasterBoardState extends State<TapMasterBoard>
 
             if (_isDragging) {
               setState(() {
-                _rotationY += details.delta.dx * 0.01;
-                _rotationX -= details.delta.dy * 0.01;
+                _rotationY -= details.delta.dx * 0.01;
+                _rotationX += details.delta.dy * 0.01;
               });
             }
           },
@@ -152,6 +154,7 @@ class _TapMasterBoardState extends State<TapMasterBoard>
             painter: _TapMasterPainter(
               puzzle: widget.puzzle,
               tappableBlocks: widget.tappableBlocks,
+              hintBlock: widget.hintBlock,
               removeAnimations: _removeAnimations,
               bouncingBlocks: _bouncingBlocks,
               rotationX: _rotationX,
@@ -272,6 +275,7 @@ class _BoardMetrics {
 class _TapMasterPainter extends CustomPainter {
   final TapMasterPuzzle puzzle;
   final Set<TapBlock> tappableBlocks;
+  final TapBlock? hintBlock;
   final Map<TapBlock, AnimationController> removeAnimations;
   final Set<TapBlock> bouncingBlocks;
   final double rotationX;
@@ -280,6 +284,7 @@ class _TapMasterPainter extends CustomPainter {
   _TapMasterPainter({
     required this.puzzle,
     required this.tappableBlocks,
+    this.hintBlock,
     required this.removeAnimations,
     required this.bouncingBlocks,
     required this.rotationX,
@@ -462,8 +467,22 @@ class _TapMasterPainter extends CustomPainter {
         _drawArrowOnFace(canvas, projected, indices, block.direction, isTappable, animValue, i);
       }
 
+      // Highlight hint block with strong glow
+      if (block == hintBlock && animValue == 0) {
+        final hintPaint = Paint()
+          ..color = Colors.yellow.withValues(alpha: 0.5)
+          ..style = PaintingStyle.fill;
+        canvas.drawPath(path, hintPaint);
+
+        // Draw glowing border
+        final glowPaint = Paint()
+          ..color = Colors.yellow
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.0;
+        canvas.drawPath(path, glowPaint);
+      }
       // Highlight tappable blocks on all visible faces
-      if (isTappable && animValue == 0) {
+      else if (isTappable && animValue == 0) {
         final highlightPaint = Paint()
           ..color = Colors.white.withValues(alpha: 0.15)
           ..style = PaintingStyle.fill;
@@ -653,6 +672,7 @@ class _TapMasterPainter extends CustomPainter {
   bool shouldRepaint(covariant _TapMasterPainter oldDelegate) {
     return oldDelegate.puzzle != puzzle ||
         oldDelegate.tappableBlocks != tappableBlocks ||
+        oldDelegate.hintBlock != hintBlock ||
         oldDelegate.removeAnimations.length != removeAnimations.length ||
         oldDelegate.bouncingBlocks.length != bouncingBlocks.length ||
         oldDelegate.rotationX != rotationX ||

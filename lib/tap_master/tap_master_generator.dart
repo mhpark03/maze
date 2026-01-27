@@ -50,8 +50,8 @@ class TapMasterGenerator {
     );
   }
 
-  /// Build puzzle starting from center, expanding outward
-  /// Creates varied solve order - outer blocks removed before inner blocks
+  /// Build puzzle starting from center columns, expanding outward
+  /// Central columns are built tall first, creating varied solve order
   static List<TapBlock> _buildPuzzleFromCenter(
     int targetCount,
     int gridWidth,
@@ -73,65 +73,117 @@ class TapMasterGenerator {
     final centerZ = (gridDepth - 1) / 2.0;
     final centerY = (maxHeight - 1) / 2.0;
 
-    // Generate all possible positions and sort by distance from center
-    final allPositions = <_Position>[];
+    // Generate all columns (x,z) and sort by horizontal distance from center
+    final columns = <_Column>[];
     for (int x = 0; x < gridWidth; x++) {
       for (int z = 0; z < gridDepth; z++) {
-        for (int y = 0; y < maxHeight; y++) {
-          final distX = (x - centerX);
-          final distY = (y - centerY);
-          final distZ = (z - centerZ);
-          final distance = sqrt(distX * distX + distY * distY + distZ * distZ);
-          allPositions.add(_Position(x: x, y: y, z: z, distance: distance));
-        }
+        final distX = (x - centerX);
+        final distZ = (z - centerZ);
+        final distance = sqrt(distX * distX + distZ * distZ);
+        columns.add(_Column(x: x, z: z, distance: distance));
       }
     }
 
-    // Sort by distance from center (closest first) with some randomness
-    allPositions.shuffle(_random);
-    allPositions.sort((a, b) {
-      // Add small random factor to avoid too uniform patterns
-      final aScore = a.distance + _random.nextDouble() * 1.5;
-      final bScore = b.distance + _random.nextDouble() * 1.5;
+    // Sort columns by distance from center (closest first) with randomness
+    columns.shuffle(_random);
+    columns.sort((a, b) {
+      final aScore = a.distance + _random.nextDouble() * 0.8;
+      final bScore = b.distance + _random.nextDouble() * 0.8;
       return aScore.compareTo(bScore);
     });
 
-    // Place blocks from center outward
-    for (final pos in allPositions) {
+    // Determine target height for each column based on distance from center
+    // Central columns should be taller
+    final columnTargets = <String, int>{};
+    for (final col in columns) {
+      // Normalize distance (0 = center, 1 = corner)
+      final maxDist = sqrt(centerX * centerX + centerZ * centerZ);
+      final normalizedDist = maxDist > 0 ? col.distance / maxDist : 0;
+
+      // Central columns get higher targets (70-100% of maxHeight)
+      // Outer columns get lower targets (30-70% of maxHeight)
+      final minRatio = 0.3 + (1.0 - normalizedDist) * 0.4; // 0.3~0.7 for outer, 0.7~0.7 for center
+      final maxRatio = 0.7 + (1.0 - normalizedDist) * 0.3; // 0.7~1.0 for outer, 1.0~1.0 for center
+      final ratio = minRatio + _random.nextDouble() * (maxRatio - minRatio);
+      final targetHeight = max(1, (maxHeight * ratio).round());
+      columnTargets['${col.x},${col.z}'] = targetHeight;
+    }
+
+    // Build columns from center outward
+    // Each column is built from bottom to top
+    for (final col in columns) {
       if (blocks.length >= targetCount) break;
 
-      // Check if this position can be placed (must be on ground or on another block)
-      if (pos.y > 0 && heightMap[pos.x][pos.z] < pos.y) continue;
-      if (pos.y != heightMap[pos.x][pos.z]) continue;
+      final targetHeight = columnTargets['${col.x},${col.z}'] ?? maxHeight;
 
-      // Find directions with CLEAR escape path (guaranteed solvable)
-      final clearDirections = _getClearDirections(
-        pos.x, pos.y, pos.z, grid, gridWidth, gridDepth, maxHeight,
-      );
+      // Build this column from current height up to target
+      for (int y = heightMap[col.x][col.z]; y < targetHeight && blocks.length < targetCount; y++) {
+        // Find directions with CLEAR escape path (guaranteed solvable)
+        final clearDirections = _getClearDirections(
+          col.x, y, col.z, grid, gridWidth, gridDepth, maxHeight,
+        );
 
-      // Must have at least one clear direction to place this block
-      if (clearDirections.isEmpty) continue;
+        // Must have at least one clear direction to place this block
+        if (clearDirections.isEmpty) break; // Can't continue this column
 
-      // Select direction with variety preference
-      final direction = _selectDirectionWithVariety(
-        clearDirections,
-        directionCounts,
-        pos.x, pos.y, pos.z,
-        centerX, centerY, centerZ,
-      );
+        // Select direction with variety preference
+        final direction = _selectDirectionWithVariety(
+          clearDirections,
+          directionCounts,
+          col.x, y, col.z,
+          centerX, centerY, centerZ,
+        );
 
-      final block = TapBlock(
-        x: pos.x,
-        y: pos.y,
-        z: pos.z,
-        direction: direction,
-        color: _blockColors[_random.nextInt(_blockColors.length)],
-      );
+        final block = TapBlock(
+          x: col.x,
+          y: y,
+          z: col.z,
+          direction: direction,
+          color: _blockColors[_random.nextInt(_blockColors.length)],
+        );
 
-      blocks.add(block);
-      grid['${pos.x},${pos.y},${pos.z}'] = block;
-      heightMap[pos.x][pos.z] = pos.y + 1;
-      directionCounts[direction] = directionCounts[direction]! + 1;
+        blocks.add(block);
+        grid['${col.x},$y,${col.z}'] = block;
+        heightMap[col.x][col.z] = y + 1;
+        directionCounts[direction] = directionCounts[direction]! + 1;
+      }
+    }
+
+    // Second pass: fill remaining blocks if we haven't reached target
+    // Try to add more blocks to columns that can accept them
+    if (blocks.length < targetCount) {
+      for (final col in columns) {
+        if (blocks.length >= targetCount) break;
+
+        // Try to extend this column further
+        for (int y = heightMap[col.x][col.z]; y < maxHeight && blocks.length < targetCount; y++) {
+          final clearDirections = _getClearDirections(
+            col.x, y, col.z, grid, gridWidth, gridDepth, maxHeight,
+          );
+
+          if (clearDirections.isEmpty) break;
+
+          final direction = _selectDirectionWithVariety(
+            clearDirections,
+            directionCounts,
+            col.x, y, col.z,
+            centerX, centerY, centerZ,
+          );
+
+          final block = TapBlock(
+            x: col.x,
+            y: y,
+            z: col.z,
+            direction: direction,
+            color: _blockColors[_random.nextInt(_blockColors.length)],
+          );
+
+          blocks.add(block);
+          grid['${col.x},$y,${col.z}'] = block;
+          heightMap[col.x][col.z] = y + 1;
+          directionCounts[direction] = directionCounts[direction]! + 1;
+        }
+      }
     }
 
     return blocks;
@@ -282,15 +334,13 @@ class TapMasterGenerator {
   }
 }
 
-class _Position {
+class _Column {
   final int x;
-  final int y;
   final int z;
   final double distance;
 
-  _Position({
+  _Column({
     required this.x,
-    required this.y,
     required this.z,
     required this.distance,
   });

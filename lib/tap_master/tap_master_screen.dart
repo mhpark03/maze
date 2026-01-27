@@ -21,10 +21,12 @@ class _TapMasterScreenState extends State<TapMasterScreen> {
   int _tapCount = 0;
   int _hintCount = 0;
   Timer? _timer;
+  Timer? _hintTimer;
   final Stopwatch _stopwatch = Stopwatch();
   String _elapsedTime = '00:00';
   final AdService _adService = AdService();
   Set<TapBlock> _tappableBlocks = {};
+  TapBlock? _hintBlock;
 
   @override
   void initState() {
@@ -36,6 +38,7 @@ class _TapMasterScreenState extends State<TapMasterScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _hintTimer?.cancel();
     _stopwatch.stop();
     super.dispose();
   }
@@ -81,9 +84,13 @@ class _TapMasterScreenState extends State<TapMasterScreen> {
   void _onBlockTap(TapBlock block) {
     if (_puzzle == null) return;
 
+    // Clear hint when block is tapped
+    _hintTimer?.cancel();
+
     setState(() {
       _puzzle!.removeBlock(block);
       _tapCount++;
+      _hintBlock = null;
       _updateTappableBlocks();
     });
 
@@ -203,8 +210,16 @@ class _TapMasterScreenState extends State<TapMasterScreen> {
   void _showHint() {
     if (_puzzle == null || _tappableBlocks.isEmpty) return;
 
+    // Cancel any existing hint timer
+    _hintTimer?.cancel();
+
+    // Select a random tappable block as hint
+    final tappableList = _tappableBlocks.toList();
+    final hintBlock = tappableList[DateTime.now().millisecondsSinceEpoch % tappableList.length];
+
     setState(() {
       _hintCount++;
+      _hintBlock = hintBlock;
     });
 
     // Show a snackbar indicating which block to tap
@@ -212,10 +227,19 @@ class _TapMasterScreenState extends State<TapMasterScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(loc.tapHighlightedBlock),
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 3),
         backgroundColor: const Color(0xFF4ECDC4),
       ),
     );
+
+    // Clear hint after 5 seconds
+    _hintTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() {
+          _hintBlock = null;
+        });
+      }
+    });
   }
 
   void _showRulesDialog() {
@@ -355,6 +379,7 @@ class _TapMasterScreenState extends State<TapMasterScreen> {
                         puzzle: _puzzle!,
                         onBlockTap: _onBlockTap,
                         tappableBlocks: _tappableBlocks,
+                        hintBlock: _hintBlock,
                       ),
                     ),
                   ),

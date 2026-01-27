@@ -22,9 +22,9 @@ extension TapMasterDifficultyExtension on TapMasterDifficulty {
       case TapMasterDifficulty.easy:
         return 3;
       case TapMasterDifficulty.medium:
-        return 4;
-      case TapMasterDifficulty.hard:
         return 5;
+      case TapMasterDifficulty.hard:
+        return 7;
     }
   }
 
@@ -33,36 +33,36 @@ extension TapMasterDifficultyExtension on TapMasterDifficulty {
       case TapMasterDifficulty.easy:
         return 3;
       case TapMasterDifficulty.medium:
-        return 4;
-      case TapMasterDifficulty.hard:
         return 5;
+      case TapMasterDifficulty.hard:
+        return 7;
     }
   }
 
-  /// Maximum stack height (higher than width/depth)
+  /// Maximum stack height
   int get maxHeight {
     switch (this) {
       case TapMasterDifficulty.easy:
         return 6;
       case TapMasterDifficulty.medium:
-        return 9;
+        return 10;
       case TapMasterDifficulty.hard:
-        return 12;
+        return 14;
     }
   }
 
   /// Total block count range (approximately 80% of total grid capacity)
   /// Easy: 3x3x6=54, 80%=43
-  /// Medium: 4x4x9=144, 80%=115
-  /// Hard: 5x5x12=300, 80%=240
+  /// Medium: 5x5x10=250, 80%=200
+  /// Hard: 7x7x14=686, 80%=549
   (int, int) get blockCountRange {
     switch (this) {
       case TapMasterDifficulty.easy:
         return (38, 48);
       case TapMasterDifficulty.medium:
-        return (100, 125);
+        return (180, 220);
       case TapMasterDifficulty.hard:
-        return (220, 260);
+        return (500, 580);
     }
   }
 }
