@@ -134,8 +134,8 @@ class _TapMasterBoardState extends State<TapMasterBoard>
 
             if (_isDragging) {
               setState(() {
-                _rotationY -= details.delta.dx * 0.01;
-                _rotationX += details.delta.dy * 0.01;
+                _rotationY += details.delta.dx * 0.01;
+                _rotationX -= details.delta.dy * 0.01;
               });
             }
           },

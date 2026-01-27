@@ -14,7 +14,8 @@ class TapMasterGenerator {
     Color(0xFFE8C99B), // Pale wood
   ];
 
-  /// Generate a puzzle for the given difficulty
+  /// Generate a solvable puzzle for the given difficulty
+  /// Uses center-outward construction for varied solve order
   static Future<TapMasterPuzzle> generate(TapMasterDifficulty difficulty) async {
     // Allow UI to update
     await Future.delayed(const Duration(milliseconds: 10));
@@ -26,8 +27,8 @@ class TapMasterGenerator {
 
     final targetBlockCount = minBlocks + _random.nextInt(maxBlocks - minBlocks + 1);
 
-    // Build puzzle using reverse simulation for interesting dependencies
-    final blocks = _buildPuzzleWithDependencies(
+    // Build solvable puzzle from center outward
+    final blocks = _buildPuzzleFromCenter(
       targetBlockCount,
       gridWidth,
       gridDepth,
@@ -49,8 +50,9 @@ class TapMasterGenerator {
     );
   }
 
-  /// Build puzzle by placing blocks with directions that create dependencies
-  static List<TapBlock> _buildPuzzleWithDependencies(
+  /// Build puzzle starting from center, expanding outward
+  /// Creates varied solve order - outer blocks removed before inner blocks
+  static List<TapBlock> _buildPuzzleFromCenter(
     int targetCount,
     int gridWidth,
     int gridDepth,
@@ -66,166 +68,230 @@ class TapMasterGenerator {
       directionCounts[dir] = 0;
     }
 
-    int attempts = 0;
-    while (blocks.length < targetCount && attempts < targetCount * 10) {
-      attempts++;
+    // Calculate center of grid
+    final centerX = (gridWidth - 1) / 2.0;
+    final centerZ = (gridDepth - 1) / 2.0;
+    final centerY = (maxHeight - 1) / 2.0;
 
-      // Pick position - prefer stacking for taller structures
-      int x, z;
-      if (_random.nextDouble() < 0.7 && blocks.isNotEmpty) {
-        // Stack on existing column
-        final stackable = <({int x, int z})>[];
-        for (int i = 0; i < gridWidth; i++) {
-          for (int j = 0; j < gridDepth; j++) {
-            if (heightMap[i][j] > 0 && heightMap[i][j] < maxHeight) {
-              stackable.add((x: i, z: j));
-            }
-          }
+    // Generate all possible positions and sort by distance from center
+    final allPositions = <_Position>[];
+    for (int x = 0; x < gridWidth; x++) {
+      for (int z = 0; z < gridDepth; z++) {
+        for (int y = 0; y < maxHeight; y++) {
+          final distX = (x - centerX);
+          final distY = (y - centerY);
+          final distZ = (z - centerZ);
+          final distance = sqrt(distX * distX + distY * distY + distZ * distZ);
+          allPositions.add(_Position(x: x, y: y, z: z, distance: distance));
         }
-        if (stackable.isNotEmpty) {
-          final pos = stackable[_random.nextInt(stackable.length)];
-          x = pos.x;
-          z = pos.z;
-        } else {
-          x = _random.nextInt(gridWidth);
-          z = _random.nextInt(gridDepth);
-        }
-      } else {
-        x = _random.nextInt(gridWidth);
-        z = _random.nextInt(gridDepth);
       }
+    }
 
-      final y = heightMap[x][z];
-      if (y >= maxHeight) continue;
+    // Sort by distance from center (closest first) with some randomness
+    allPositions.shuffle(_random);
+    allPositions.sort((a, b) {
+      // Add small random factor to avoid too uniform patterns
+      final aScore = a.distance + _random.nextDouble() * 1.5;
+      final bScore = b.distance + _random.nextDouble() * 1.5;
+      return aScore.compareTo(bScore);
+    });
 
-      // Find directions that create interesting gameplay
-      final direction = _selectInterestingDirection(
-        x, y, z,
-        grid,
-        directionCounts,
-        gridWidth, gridDepth, maxHeight,
+    // Place blocks from center outward
+    for (final pos in allPositions) {
+      if (blocks.length >= targetCount) break;
+
+      // Check if this position can be placed (must be on ground or on another block)
+      if (pos.y > 0 && heightMap[pos.x][pos.z] < pos.y) continue;
+      if (pos.y != heightMap[pos.x][pos.z]) continue;
+
+      // Find directions with CLEAR escape path (guaranteed solvable)
+      final clearDirections = _getClearDirections(
+        pos.x, pos.y, pos.z, grid, gridWidth, gridDepth, maxHeight,
       );
 
-      if (direction == null) continue;
+      // Must have at least one clear direction to place this block
+      if (clearDirections.isEmpty) continue;
+
+      // Select direction with variety preference
+      final direction = _selectDirectionWithVariety(
+        clearDirections,
+        directionCounts,
+        pos.x, pos.y, pos.z,
+        centerX, centerY, centerZ,
+      );
 
       final block = TapBlock(
-        x: x,
-        y: y,
-        z: z,
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
         direction: direction,
         color: _blockColors[_random.nextInt(_blockColors.length)],
       );
 
       blocks.add(block);
-      grid['$x,$y,$z'] = block;
-      heightMap[x][z] = y + 1;
+      grid['${pos.x},${pos.y},${pos.z}'] = block;
+      heightMap[pos.x][pos.z] = pos.y + 1;
       directionCounts[direction] = directionCounts[direction]! + 1;
     }
 
     return blocks;
   }
 
-  /// Select a direction that creates interesting gameplay
-  static ArrowDirection? _selectInterestingDirection(
+  /// Get all directions that have a clear path to the edge (no blocking blocks)
+  static List<ArrowDirection> _getClearDirections(
     int x, int y, int z,
     Map<String, TapBlock> grid,
-    Map<ArrowDirection, int> directionCounts,
     int gridWidth, int gridDepth, int maxHeight,
   ) {
-    final candidates = <ArrowDirection, double>{};
+    final clearDirs = <ArrowDirection>[];
 
-    for (final dir in ArrowDirection.values) {
-      // Check if this direction has any blocking blocks
-      final blockingCount = _countBlockingBlocks(x, y, z, dir, grid, gridWidth, gridDepth, maxHeight);
-
-      // Calculate score - prefer directions with blocking blocks (creates dependencies)
-      // but also consider variety
-      double score = 0;
-
-      if (blockingCount > 0) {
-        // Has blocking blocks - this creates a dependency (good for difficulty)
-        score += 10.0 + blockingCount * 2;
-      } else {
-        // Clear path to edge - always valid but less interesting
-        score += 5.0;
-      }
-
-      // Bonus for less-used directions (variety)
-      final usage = directionCounts[dir] ?? 0;
-      final totalBlocks = grid.length;
-      if (totalBlocks > 0) {
-        final avgUsage = totalBlocks / 6.0;
-        if (usage < avgUsage) {
-          score += (avgUsage - usage) * 3;
-        }
-      } else {
-        score += 3.0; // First block gets bonus for any direction
-      }
-
-      // Small random factor
-      score += _random.nextDouble() * 2;
-
-      candidates[dir] = score;
+    if (_isPathClear(x, y, z, ArrowDirection.north, grid, gridWidth, gridDepth, maxHeight)) {
+      clearDirs.add(ArrowDirection.north);
+    }
+    if (_isPathClear(x, y, z, ArrowDirection.south, grid, gridWidth, gridDepth, maxHeight)) {
+      clearDirs.add(ArrowDirection.south);
+    }
+    if (_isPathClear(x, y, z, ArrowDirection.east, grid, gridWidth, gridDepth, maxHeight)) {
+      clearDirs.add(ArrowDirection.east);
+    }
+    if (_isPathClear(x, y, z, ArrowDirection.west, grid, gridWidth, gridDepth, maxHeight)) {
+      clearDirs.add(ArrowDirection.west);
+    }
+    if (_isPathClear(x, y, z, ArrowDirection.skyward, grid, gridWidth, gridDepth, maxHeight)) {
+      clearDirs.add(ArrowDirection.skyward);
+    }
+    if (_isPathClear(x, y, z, ArrowDirection.groundward, grid, gridWidth, gridDepth, maxHeight)) {
+      clearDirs.add(ArrowDirection.groundward);
     }
 
-    if (candidates.isEmpty) return null;
+    return clearDirs;
+  }
 
-    // Weighted random selection based on scores
-    final totalScore = candidates.values.reduce((a, b) => a + b);
-    var threshold = _random.nextDouble() * totalScore;
+  /// Check if the path is completely clear for a given direction
+  static bool _isPathClear(
+    int x, int y, int z,
+    ArrowDirection dir,
+    Map<String, TapBlock> grid,
+    int gridWidth, int gridDepth, int maxHeight,
+  ) {
+    switch (dir) {
+      case ArrowDirection.north: // -X
+        for (int i = x - 1; i >= 0; i--) {
+          if (grid.containsKey('$i,$y,$z')) return false;
+        }
+        return true;
 
-    for (final entry in candidates.entries) {
+      case ArrowDirection.south: // +X
+        for (int i = x + 1; i < gridWidth; i++) {
+          if (grid.containsKey('$i,$y,$z')) return false;
+        }
+        return true;
+
+      case ArrowDirection.east: // -Z
+        for (int i = z - 1; i >= 0; i--) {
+          if (grid.containsKey('$x,$y,$i')) return false;
+        }
+        return true;
+
+      case ArrowDirection.west: // +Z
+        for (int i = z + 1; i < gridDepth; i++) {
+          if (grid.containsKey('$x,$y,$i')) return false;
+        }
+        return true;
+
+      case ArrowDirection.skyward: // +Y
+        for (int i = y + 1; i < maxHeight; i++) {
+          if (grid.containsKey('$x,$i,$z')) return false;
+        }
+        return true;
+
+      case ArrowDirection.groundward: // -Y
+        for (int i = y - 1; i >= 0; i--) {
+          if (grid.containsKey('$x,$i,$z')) return false;
+        }
+        return true;
+    }
+  }
+
+  /// Select direction with variety and position-based preference
+  static ArrowDirection _selectDirectionWithVariety(
+    List<ArrowDirection> clearDirections,
+    Map<ArrowDirection, int> directionCounts,
+    int x, int y, int z,
+    double centerX, double centerY, double centerZ,
+  ) {
+    if (clearDirections.length == 1) {
+      return clearDirections.first;
+    }
+
+    // Calculate weights based on variety and position
+    final weights = <ArrowDirection, double>{};
+    final totalUsage = directionCounts.values.fold(0, (a, b) => a + b);
+    final avgUsage = totalUsage > 0 ? totalUsage / 6.0 : 1.0;
+
+    for (final dir in clearDirections) {
+      final usage = directionCounts[dir] ?? 0;
+
+      // Base weight for variety (prefer less-used directions)
+      double weight = 1.0 + max(0.0, avgUsage - usage) * 2;
+
+      // Position-based bonus: prefer directions pointing away from center
+      final awayBonus = _getAwayFromCenterBonus(dir, x, y, z, centerX, centerY, centerZ);
+      weight += awayBonus * 0.5;
+
+      // Random factor for unpredictability
+      weight += _random.nextDouble() * 1.0;
+
+      weights[dir] = weight;
+    }
+
+    // Weighted random selection
+    final totalWeight = weights.values.reduce((a, b) => a + b);
+    var threshold = _random.nextDouble() * totalWeight;
+
+    for (final entry in weights.entries) {
       threshold -= entry.value;
       if (threshold <= 0) {
         return entry.key;
       }
     }
 
-    return candidates.keys.first;
+    return clearDirections[_random.nextInt(clearDirections.length)];
   }
 
-  /// Count how many blocks are in the path of the given direction
-  static int _countBlockingBlocks(
-    int x, int y, int z,
+  /// Calculate bonus for directions pointing away from center
+  static double _getAwayFromCenterBonus(
     ArrowDirection dir,
-    Map<String, TapBlock> grid,
-    int gridWidth, int gridDepth, int maxHeight,
+    int x, int y, int z,
+    double centerX, double centerY, double centerZ,
   ) {
-    int count = 0;
-
     switch (dir) {
       case ArrowDirection.north: // -X
-        for (int i = x - 1; i >= 0; i--) {
-          if (grid.containsKey('$i,$y,$z')) count++;
-        }
-        break;
+        return x < centerX ? 1.0 : 0.0;
       case ArrowDirection.south: // +X
-        for (int i = x + 1; i < gridWidth; i++) {
-          if (grid.containsKey('$i,$y,$z')) count++;
-        }
-        break;
+        return x > centerX ? 1.0 : 0.0;
       case ArrowDirection.east: // -Z
-        for (int i = z - 1; i >= 0; i--) {
-          if (grid.containsKey('$x,$y,$i')) count++;
-        }
-        break;
+        return z < centerZ ? 1.0 : 0.0;
       case ArrowDirection.west: // +Z
-        for (int i = z + 1; i < gridDepth; i++) {
-          if (grid.containsKey('$x,$y,$i')) count++;
-        }
-        break;
+        return z > centerZ ? 1.0 : 0.0;
       case ArrowDirection.skyward: // +Y
-        for (int i = y + 1; i < maxHeight; i++) {
-          if (grid.containsKey('$x,$i,$z')) count++;
-        }
-        break;
+        return y > centerY ? 1.0 : 0.0;
       case ArrowDirection.groundward: // -Y
-        for (int i = y - 1; i >= 0; i--) {
-          if (grid.containsKey('$x,$i,$z')) count++;
-        }
-        break;
+        return y < centerY ? 1.0 : 0.0;
     }
-
-    return count;
   }
+}
+
+class _Position {
+  final int x;
+  final int y;
+  final int z;
+  final double distance;
+
+  _Position({
+    required this.x,
+    required this.y,
+    required this.z,
+    required this.distance,
+  });
 }
