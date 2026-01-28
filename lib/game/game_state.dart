@@ -184,9 +184,44 @@ class GameState extends ChangeNotifier {
   void tapCell(int row, int col) {
     if (_level == null) return;
 
+    // 먼저 정확한 위치에서 화살표 확인
     ArrowPath? path = _level!.getPathAt(row, col);
     if (path != null && !path.isRemoved) {
       _startFlyingAnimation(path);
+      return;
+    }
+
+    // 정확한 위치에 없으면 3x3 영역에서 가장 가까운 화살표 찾기
+    ArrowPath? closestPath;
+    double closestDistance = double.infinity;
+
+    for (int dr = -1; dr <= 1; dr++) {
+      for (int dc = -1; dc <= 1; dc++) {
+        if (dr == 0 && dc == 0) continue; // 이미 확인한 위치 스킵
+
+        int checkRow = row + dr;
+        int checkCol = col + dc;
+
+        // 그리드 범위 확인
+        if (checkRow < 0 || checkRow >= _level!.gridSize ||
+            checkCol < 0 || checkCol >= _level!.gridSize) {
+          continue;
+        }
+
+        ArrowPath? nearPath = _level!.getPathAt(checkRow, checkCol);
+        if (nearPath != null && !nearPath.isRemoved) {
+          // 탭 위치와의 거리 계산
+          double distance = (dr * dr + dc * dc).toDouble();
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestPath = nearPath;
+          }
+        }
+      }
+    }
+
+    if (closestPath != null) {
+      _startFlyingAnimation(closestPath);
     }
   }
 
