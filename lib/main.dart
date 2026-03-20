@@ -8,9 +8,11 @@ import 'l10n/locale_provider.dart';
 import 'screens/game_selection_screen.dart';
 import 'services/ad_service.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   await AdService().initialize();
 
   // 계정 정지 중에도 코드 레벨에서 테스트 기기를 강제 지정합니다.
